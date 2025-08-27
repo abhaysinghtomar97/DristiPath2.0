@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Test - Bus Tracking</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .success { color: green; background: #e8f5e8; padding: 10px; margin: 10px 0; }
+        .error { color: red; background: #ffe8e8; padding: 10px; margin: 10px 0; }
+        .info { color: blue; background: #e8f4ff; padding: 10px; margin: 10px 0; }
+        pre { background: #f5f5f5; padding: 10px; overflow-x: auto; }
+        button { padding: 10px 20px; margin: 5px; background: #007cba; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #005a85; }
+    </style>
+</head>
+<body>
+    <h1>🚌 Bus Tracking Debug Test</h1>
+    <div class="info">This page will help debug the API connection issues.</div>
+    
+    <button onclick="testAPI()">Test API Connection</button>
+    <button onclick="clearLogs()">Clear Logs</button>
+    
+    <div id="results"></div>
+    
+    <h3>Console Logs:</h3>
+    <div id="console-logs"></div>
+
+    <script>
+        const resultsDiv = document.getElementById('results');
+        const consoleLogs = document.getElementById('console-logs');
+        
+        // Capture console logs
+        const originalLog = console.log;
+        const originalError = console.error;
+        
+        console.log = function(...args) {
+            originalLog.apply(console, args);
+            consoleLogs.innerHTML += '<div class="info"><strong>[LOG]</strong> ' + args.join(' ') + '</div>';
+            consoleLogs.scrollTop = consoleLogs.scrollHeight;
+        };
+        
+        console.error = function(...args) {
+            originalError.apply(console, args);
+            consoleLogs.innerHTML += '<div class="error"><strong>[ERROR]</strong> ' + args.join(' ') + '</div>';
+            consoleLogs.scrollTop = consoleLogs.scrollHeight;
+        };
+        
+        function clearLogs() {
+            consoleLogs.innerHTML = '';
+            resultsDiv.innerHTML = '';
+        }
+        
+        async function testAPI() {
+            resultsDiv.innerHTML = '<div class="info">Testing API connection...</div>';
+            
+            try {
+                console.log('Starting API test...');
+                console.log('Current URL:', window.location.href);
+                console.log('Testing fetch to: /api/get_locations/');
+                
+                const startTime = Date.now();
+                const response = await fetch('/api/get_locations/');
+                const endTime = Date.now();
+                
+                console.log('Fetch completed in', (endTime - startTime), 'ms');
+                console.log('Response status:', response.status, response.statusText);
+                console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                const data = await response.json();
+                console.log('Data received:', data);
+                
+                // Display results
+                if (data.status === 'success') {
+                    resultsDiv.innerHTML = `
+                        <div class="success">
+                            <h3>✅ API Test Successful!</h3>
+                            <p><strong>Status:</strong> ${data.status}</p>
+                            <p><strong>Bus Count:</strong> ${data.count}</p>
+                            <p><strong>Response Time:</strong> ${endTime - startTime}ms</p>
+                        </div>
+                        <h4>Bus Data:</h4>
+                        <pre>${JSON.stringify(data.locations, null, 2)}</pre>
+                    `;
+                } else {
+                    throw new Error('API returned error status: ' + data.status);
+                }
+                
+            } catch (error) {
+                console.error('API test failed:', error);
+                resultsDiv.innerHTML = `
+                    <div class="error">
+                        <h3>❌ API Test Failed</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p><strong>Error Type:</strong> ${error.constructor.name}</p>
+                    </div>
+                `;
+                
+                // Additional debugging info
+                console.log('Window location:', window.location);
+                console.log('Base URL would be:', window.location.origin);
+                console.log('Full API URL would be:', window.location.origin + '/api/get_locations/');
+            }
+        }
+        
+        // Auto-run test when page loads
+        window.addEventListener('load', function() {
+            console.log('Debug page loaded');
+            console.log('User agent:', navigator.userAgent);
+            console.log('Page URL:', window.location.href);
+            testAPI();
+        });
+    </script>
+</body>
+</html>
