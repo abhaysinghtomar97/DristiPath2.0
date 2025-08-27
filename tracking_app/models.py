@@ -1,0 +1,120 @@
+from django.db import models
+from django.utils import timezone
+from django.contrib.auth.models import User
+from math import radians, cos, sin, asin, sqrt
+
+# Create your models here.
+
+class Route(models.Model):
+    """Bus route information"""
+    route_id = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=100)
+    start_location = models.CharField(max_length=200)
+    end_location = models.CharField(max_length=200)
+    description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.route_id} - {self.name}"
+
+class Bus(models.Model):
+    """Bus information"""
+    bus_id = models.CharField(max_length=50, unique=True)
+    route = models.ForeignKey(Route, on_delete=models.CASCADE, related_name='buses')
+    driver_name = models.CharField(max_length=100, blank=True)
+    bus_number = models.CharField(max_length=50)
+    capacity = models.IntegerField(default=50)
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    def __str__(self):
+        return f"{self.bus_id} - {self.bus_number}"
+    
+    def get_current_location(self):
+        """Get the latest location of this bus"""
+        return self.locations.first()  # Latest location
+
+class BusLocation(models.Model):
+    """Bus location tracking"""
+    bus = models.ForeignKey(Bus, on_delete=models.CASCADE, related_name='locations')
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+    speed = models.FloatField(default=0.0)  # Speed in km/h
+    heading = models.FloatField(default=0.0)  # Direction in degrees
+    last_updated = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-last_updated']
+    
+    def __str__(self):
+        return f"Bus {self.bus.bus_id} - {self.latitude}, {self.longitude}"
+    
+    @staticmethod
+    def calculate_distance(lat1, lon1, lat2, lon2):
+        """Calculate distance between two points in kilometers"""
+        # Convert decimal degrees to radians
+        lat1, lon1, lat2, lon2 = map(radians, [lat1, lon1, lat2, lon2])
+        
+        # Haversine formula
+        dlat = lat2 - lat1
+        dlon = lon2 - lon1
+        a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+        c = 2 * asin(sqrt(a))
+        r = 6371  # Radius of earth in kilometers
+        return c * r
+
+class UserLocation(models.Model):
+    """User location for finding nearest buses"""
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    session_id = models.CharField(max_length=100, blank=True)  # For anonymous users
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+    accuracy = models.FloatField(default=0.0)  # GPS accuracy in meters
+    last_updated = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-last_updated']
+    
+    def __str__(self):
+        user_info = self.user.username if self.user else f"Session {self.session_id}"
+        return f"{user_info} - {self.latitude}, {self.longitude}"
+    
+    def find_nearest_buses(self, radius_km=5.0, limit=10):
+        """Find nearest buses within given radius"""
+        from django.db import connection
+        
+        # Get all active bus locations
+        bus_locations = BusLocation.objects.select_related('bus').filter(
+            bus__is_active=True
+        )
+        
+        nearby_buses = []
+        for bus_location in bus_locations:
+            distance = BusLocation.calculate_distance(
+                self.latitude, self.longitude,
+                bus_location.latitude, bus_location.longitude
+            )
+            
+            if distance <= radius_km:
+                nearby_buses.append({
+                    'bus': bus_location.bus,
+                    'location': bus_location,
+                    'distance': round(distance, 2)
+                })
+        
+        # Sort by distance and limit results
+        nearby_buses.sort(key=lambda x: x['distance'])
+        return nearby_buses[:limit]
+
+class BusStop(models.Model):
+    """Bus stops along routes"""
+    stop_id = models.CharField(max_length=50, unique=True)
+    name = models.CharField(max_length=100)
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+    routes = models.ManyToManyField(Route, related_name='stops')
+    is_active = models.BooleanField(default=True)
+    
+    def __str__(self):
+        return f"{self.stop_id} - {self.name}"

@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Bus Map Test</title>
+    <style>
+        #testMap {
+            width: 800px;
+            height: 400px;
+            border: 2px solid #333;
+            background: #f0f8ff;
+        }
+        #testCanvas {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <h1>Bus Map Test</h1>
+    <div id="testMap">
+        <canvas id="testCanvas"></canvas>
+    </div>
+    <p id="status">Loading...</p>
+
+    <script>
+        console.log('Test page loading...');
+        
+        const canvas = document.getElementById('testCanvas');
+        const mapDiv = document.getElementById('testMap');
+        const status = document.getElementById('status');
+        
+        canvas.width = 800;
+        canvas.height = 400;
+        
+        const ctx = canvas.getContext('2d');
+        
+        // Draw test background
+        ctx.fillStyle = '#f0f8ff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        
+        // Draw grid
+        ctx.strokeStyle = '#ddd';
+        for (let i = 0; i <= 10; i++) {
+            const x = (canvas.width / 10) * i;
+            const y = (canvas.height / 10) * i;
+            ctx.beginPath();
+            ctx.moveTo(x, 0);
+            ctx.lineTo(x, canvas.height);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(0, y);
+            ctx.lineTo(canvas.width, y);
+            ctx.stroke();
+        }
+        
+        // Draw title
+        ctx.fillStyle = '#333';
+        ctx.font = 'bold 20px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText('TEST: Simple Bus Map', canvas.width / 2, 30);
+        
+        // Draw test bus markers
+        const testBuses = [
+            { id: 'BUS-001', x: 200, y: 150, color: '#3498db' },
+            { id: 'BUS-002', x: 600, y: 250, color: '#e74c3c' }
+        ];
+        
+        testBuses.forEach(bus => {
+            // Draw circle
+            ctx.beginPath();
+            ctx.arc(bus.x, bus.y, 15, 0, 2 * Math.PI);
+            ctx.fillStyle = bus.color;
+            ctx.fill();
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Draw bus emoji
+            ctx.fillStyle = 'white';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('🚌', bus.x, bus.y + 4);
+            
+            // Draw bus ID
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 12px Arial';
+            ctx.fillText(bus.id, bus.x, bus.y - 25);
+        });
+        
+        status.textContent = 'Canvas test completed! You should see a grid with 2 colored bus markers.';
+        console.log('Canvas test completed successfully');
+    </script>
+</body>
+</html>
