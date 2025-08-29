@@ -86,7 +86,7 @@ BUS_ROUTES = {
 }
 
 class BusSimulator:
-    def __init__(self, server_url='http://localhost:8000'):
+    def __init__(self, server_url='http://127.0.0.1:8000'):
         self.server_url = server_url
         self.bus_states = {}
         self.running = False
@@ -219,7 +219,7 @@ class BusSimulator:
         print(f"Simulating {len(BUS_ROUTES)} buses:")
         for bus_id, route_info in BUS_ROUTES.items():
             print(f"  - {bus_id}: {route_info['name']}")
-        print("\nMake sure your Django server is running on http://localhost:8000")
+        print("\nMake sure your Django server is running on http://127.0.0.1:8000")
         print("Press Ctrl+C to stop the simulation\n")
         
         self.running = True
@@ -268,7 +268,7 @@ class BusSimulator:
             print(f"❌ Connection failed: {e}")
             print("\nMake sure to:")
             print("1. Run 'python manage.py runserver' in another terminal")
-            print("2. Ensure the server is running on http://localhost:8000")
+            print("2. Ensure the server is running on http://127.0.0.1:8000")
             return False
 
 if __name__ == "__main__":
