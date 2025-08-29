@@ -423,4 +423,16 @@ def admin_dashboard(request):
     """Admin dashboard view - requires authentication"""
     if not request.user.is_staff:
         return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
-    return render(request, 'tracking_app/admin_dashboard.html')
+    
+    # Serve the admin dashboard HTML file directly
+    import os
+    from django.conf import settings
+    from django.http import HttpResponse
+    
+    admin_path = os.path.join(settings.BASE_DIR, 'admin_dashboard.html')
+    if os.path.exists(admin_path):
+        with open(admin_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        return HttpResponse(content, content_type='text/html')
+    else:
+        return HttpResponse('<h1>Admin Dashboard</h1><p>Admin dashboard page not found.</p>')
