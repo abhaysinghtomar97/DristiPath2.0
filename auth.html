@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Authenticate - Public Transport Tracking</title>
+  <style>
+    :root { --primary:#2c3e50; --accent:#3498db; --card:#fff; }
+    *{box-sizing:border-box}
+    body { margin:0; font-family: Arial, sans-serif; background:#f5f7fb; }
+    .navbar { background:var(--primary); color:#fff; padding:16px 20px; display:flex; justify-content:space-between; align-items:center; }
+    .brand { font-weight:700; }
+    .container { max-width:980px; margin:0 auto; padding:30px 16px; }
+    .row { display:grid; grid-template-columns:1fr; gap:20px; }
+    @media(min-width:900px){ .row{ grid-template-columns:1fr 1fr; } }
+    .panel { background:var(--card); border-radius:12px; padding:22px; box-shadow:0 10px 28px rgba(0,0,0,0.08); }
+    h2,h3{ margin:0 0 10px 0; color:var(--primary); }
+    label{ font-size:13px; color:#374151; }
+    input { width:100%; padding:10px 12px; border:1px solid #e5e7eb; border-radius:8px; margin-top:6px; }
+    .btn { background:var(--accent); color:#fff; border:none; border-radius:8px; padding:10px 16px; cursor:pointer; font-weight:700; }
+    .muted{ color:#6b7280; font-size:13px; }
+    .footer { text-align:center; color:#6b7280; font-size:12px; margin-top:10px; }
+  </style>
+</head>
+<body>
+  <div class="navbar">
+    <div class="brand">🚍 Public Transport Tracking</div>
+    <a href="/select/" style="color:#fff; text-decoration:none;">Back</a>
+  </div>
+
+  <div class="container">
+    <h2 id="title">Authentication</h2>
+    <p class="muted" id="subtitle">Sign in or sign up to continue</p>
+
+    <div id="admin-only" class="panel" style="display:none;">
+      <h3>Admin Sign In</h3>
+      <div style="display:grid; gap:12px;">
+        <div>
+          <label>Username
+            <input id="admin-username" type="text" placeholder="admin" />
+          </label>
+        </div>
+        <div>
+          <label>Password
+            <input id="admin-password" type="password" placeholder="••••••••" />
+          </label>
+        </div>
+        <div style="display:flex; gap:10px; align-items:center;">
+          <button class="btn" onclick="adminLogin()">Sign In</button>
+          <span id="admin-msg" class="muted"></span>
+        </div>
+      </div>
+      <p class="muted" style="margin-top:10px;">Admin accounts are managed in Django. No sign-up here.</p>
+    </div>
+
+    <div id="user-cards" class="row">
+      <div class="panel">
+        <h3>Sign In (User)</h3>
+        <div style="display:grid; gap:12px;">
+          <div>
+            <label>User ID
+              <input id="user-id" type="text" placeholder="e.g., user01" />
+            </label>
+          </div>
+          <div>
+            <label>Password
+              <input id="user-pass" type="password" placeholder="••••••••" />
+            </label>
+          </div>
+          <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+            <button class="btn" onclick="userSignin()">Sign In</button>
+            <button class="btn" style="background:#27ae60" onclick="continueGuest()">Continue as Guest</button>
+            <span id="signin-msg" class="muted"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <h3>Sign Up (User)</h3>
+        <div style="display:grid; gap:12px;">
+          <div>
+            <label>Name
+              <input id="su-name" type="text" placeholder="Your name" />
+            </label>
+          </div>
+          <div>
+            <label>User ID
+              <input id="su-id" type="text" placeholder="Choose an ID" />
+            </label>
+          </div>
+          <div>
+            <label>Password
+              <input id="su-pass" type="password" placeholder="Set a password" />
+            </label>
+          </div>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <button class="btn" onclick="userSignup()">Sign Up</button>
+            <span id="signup-msg" class="muted"></span>
+          </div>
+        </div>
+        <p class="muted" style="margin-top:8px;">For demo only — stored locally in your browser.</p>
+      </div>
+    </div>
+
+    <div class="footer">After sign in, you'll be redirected to the live tracking dashboard.</div>
+  </div>
+
+  <script>
+    // Detect type from query param
+    const params = new URLSearchParams(location.search);
+    const type = (params.get('type')||'user').toLowerCase();
+
+    if (type === 'admin') {
+      document.getElementById('title').textContent = 'Admin Authentication';
+      document.getElementById('subtitle').textContent = 'Sign in to access the Admin Panel';
+      document.getElementById('admin-only').style.display = 'block';
+      document.getElementById('user-cards').style.display = 'none';
+    }
+
+    function continueGuest(){
+      location.href = '/user/';
+    }
+
+    function getUsers(){
+      try { return JSON.parse(localStorage.getItem('rtpt_users')||'{}'); } catch(e){ return {}; }
+    }
+    function setUsers(obj){ localStorage.setItem('rtpt_users', JSON.stringify(obj)); }
+
+    function userSignup(){
+      const name = document.getElementById('su-name').value.trim();
+      const id = document.getElementById('su-id').value.trim();
+      const pass = document.getElementById('su-pass').value;
+      const msg = document.getElementById('signup-msg');
+      if (!name || !id || !pass) { msg.textContent = 'Fill all fields'; msg.style.color = '#e74c3c'; return; }
+      const users = getUsers();
+      if (users[id]) { msg.textContent = 'User ID already exists'; msg.style.color = '#e74c3c'; return; }
+      users[id] = { name, pass };
+      setUsers(users);
+      msg.textContent = 'Sign up successful! You can sign in now.'; msg.style.color = '#27ae60';
+    }
+
+    function userSignin(){
+      const id = document.getElementById('user-id').value.trim();
+      const pass = document.getElementById('user-pass').value;
+      const msg = document.getElementById('signin-msg');
+      const users = getUsers();
+      if (!users[id] || users[id].pass !== pass) { msg.textContent = 'Invalid credentials'; msg.style.color = '#e74c3c'; return; }
+      msg.textContent = 'Success! Redirecting...'; msg.style.color = '#27ae60';
+      setTimeout(()=> location.href='/user/', 500);
+    }
+
+    async function adminLogin(){
+      const u = document.getElementById('admin-username').value.trim();
+      const p = document.getElementById('admin-password').value;
+      const msg = document.getElementById('admin-msg');
+      if(!u || !p){ msg.textContent = 'Enter username and password'; msg.style.color = '#e74c3c'; return; }
+      msg.textContent = 'Signing in...'; msg.style.color = '#0f4871';
+      try {
+        const res = await fetch('/api/admin/login/', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ username:u, password:p }) });
+        const data = await res.json();
+        if (data.status === 'success') { msg.textContent = 'Success! Redirecting...'; msg.style.color = '#27ae60'; setTimeout(()=> location.href='/user/?role=admin', 500); }
+        else { msg.textContent = data.error || 'Login failed'; msg.style.color = '#e74c3c'; }
+      } catch (e) { msg.textContent = 'Network error'; msg.style.color = '#e74c3c'; }
+    }
+  </script>
+</body>
+</html>

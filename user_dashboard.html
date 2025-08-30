@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Real-Time Public Transport Tracking</title>
+    <style>
+        :root {
+            --primary: #2c3e50;
+            --accent: #3498db;
+            --bg: #f5f5f5;
+            --card: #ffffff;
+        }
+        * { box-sizing: border-box; }
+        body { margin: 0; font-family: Arial, sans-serif; background: var(--bg); color: #222; }
+        .navbar {
+            background: var(--primary);
+            color: #fff;
+            padding: 14px 20px;
+            display: flex; align-items: center; justify-content: space-between;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            position: sticky; top: 0; z-index: 10;
+        }
+        .brand { font-weight: 700; letter-spacing: 0.3px; }
+        .nav-actions { display: flex; gap: 10px; align-items: center; }
+        .pill { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: #fff; padding: 6px 12px; border-radius: 24px; font-size: 12px; }
+        .nav-link { color: #fff; text-decoration: none; padding: 6px 12px; border-radius: 6px; background: rgba(255,255,255,0.12); }
+        .nav-link:hover { background: rgba(255,255,255,0.2); }
+
+        .container { max-width: 1200px; margin: 0 auto; padding: 20px; }
+        .panel { background: var(--card); border-radius: 10px; padding: 18px; margin-bottom: 18px; box-shadow: 0 2px 6px rgba(0,0,0,0.06); }
+        h2, h3 { margin: 0 0 10px 0; color: var(--primary); }
+        .controls { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+        button { padding: 9px 14px; background: var(--accent); color: #fff; border: none; border-radius: 6px; cursor: pointer; }
+        button.secondary { background: #27ae60; }
+        button.warning { background: #f39c12; }
+        input, select { padding: 9px 10px; border: 1px solid #ddd; border-radius: 6px; }
+        #map { height: 580px; width: 100%; border-radius: 10px; background: #f0f8ff; border: 1px solid #e0e0e0; overflow: hidden; }
+        #mapCanvas { display: block; width: 100%; height: 100%; border-radius: 10px; }
+        .info-list { display: grid; gap: 10px; }
+        .item { display: flex; justify-content: space-between; align-items: center; background: #ecf0f1; border-left: 4px solid var(--accent); padding: 10px; border-radius: 6px; }
+        .status { padding: 4px 12px; border-radius: 16px; font-size: 12px; font-weight: 700; color: #fff; }
+        .status.ok { background: #2ecc71; }
+        .status.warn { background: #e67e22; }
+        .status.off { background: #e74c3c; }
+        .muted { color: #6b7280; font-size: 12px; }
+        .row { display: grid; gap: 18px; grid-template-columns: 1fr; }
+        @media (min-width: 980px) { .row { grid-template-columns: 1.1fr 0.9fr; } }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <div class="brand">🚍 Real-Time Public Transport Tracking</div>
+        <div class="nav-actions">
+            <span class="pill">No Delay</span>
+            <span class="pill">Reduce Traffic</span>
+            <span class="pill">Real Time</span>
+            <a class="nav-link" href="/">Home</a>
+            <a class="nav-link" id="adminLink" href="/admin_panel/" style="display:none;">Admin Panel</a>
+        </div>
+    </div>
+
+    <div class="container">
+        <div class="row">
+            <div>
+                <div class="panel">
+                    <h3>Navigation</h3>
+                    <div class="controls">
+                        <button id="btn-refresh">Refresh</button>
+                        <button id="btn-my-location" class="secondary">My Location</button>
+                        <label>Radius (km) <input type="number" id="radius-km" min="1" max="50" value="5" style="width:72px;"></label>
+                        <button id="btn-nearest">Find Nearest</button>
+                        <input type="text" id="search-query" placeholder="Vehicle/Route/ID search..." style="flex:1;min-width:220px;">
+                        <button id="btn-search">Search</button>
+                    </div>
+                    <div class="controls" style="margin-top:10px;">
+                        <label>Filter by Route <select id="route-filter" style="min-width:220px"><option value="">All routes</option></select></label>
+                        <button id="btn-apply-route" class="secondary">Apply Filter</button>
+                        <button id="btn-delay" class="warning">Check Delay</button>
+                    </div>
+                    <div id="nearest-results" style="margin-top:10px;"></div>
+                </div>
+                <div id="map" class="panel" style="padding:0;"></div>
+            </div>
+            <div>
+                <div class="panel">
+                    <h3>Live Vehicles</h3>
+                    <div id="bus-list" class="info-list"><div class="muted">Loading...</div></div>
+                </div>
+                <div class="panel">
+                    <h3>Delay Report</h3>
+                    <div id="delay-results" class="info-list"><div class="muted">Click "Check Delay" to analyze last updates.</div></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Show Admin link if role=admin in URL
+        (function(){
+            const role = new URLSearchParams(location.search).get('role');
+            if (role === 'admin') document.getElementById('adminLink').style.display = 'inline-block';
+        })();
+
+        let map; let markers = {}; let infoWindows = {}; let routes = []; let initialized = false;
+
+        function initMap() {
+            if (initialized) return; initialized = true;
+            map = new google.maps.Map(document.getElementById("map"), {
+                zoom: 11,
+                center: { lat: 28.6139, lng: 77.2090 },
+                mapTypeId: google.maps.MapTypeId.ROADMAP,
+                styles: [{ featureType: "poi", elementType: "labels", stylers: [{ visibility: "off" }] }]
+            });
+            fetchBusLocations();
+            setInterval(fetchBusLocations, 5000);
+        }
+
+        async function fetchJSON(url, options={}){
+            const res = await fetch(url, options); if(!res.ok) throw new Error(res.status+" "+res.statusText); return res.json();
+        }
+
+        function fetchBusLocations(){
+            fetchJSON('/api/get_locations/').then(data=>{
+                if(data.status==='success'){ updateMap(data.locations); updateBusList(data.locations); }
+                else { updateBusList([]); }
+            }).catch(()=>updateBusList([]));
+        }
+
+        async function loadRoutes(){
+            try{ const data = await fetchJSON('/api/routes/'); if(data.status==='success'){ routes=data.routes||[]; const sel=document.getElementById('route-filter'); sel.innerHTML='<option value="">All routes</option>' + routes.map(r=>`<option value="${r.route_id}">${r.route_id} - ${r.name}</option>`).join(''); } }
+            catch(e){ console.error('routes',e); }
+        }
+
+        async function useMyLocation(){
+            if(!navigator.geolocation){ alert('Geolocation not supported'); return; }
+            navigator.geolocation.getCurrentPosition(async (pos)=>{
+                const { latitude, longitude, accuracy } = pos.coords;
+                try { await fetchJSON('/api/update_user_location/', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ latitude, longitude, accuracy })});
+                    document.getElementById('nearest-results').innerHTML = `Your location set to: ${latitude.toFixed(4)}, ${longitude.toFixed(4)} (±${Math.round(accuracy)}m)`;
+                } catch(e){ console.error(e); }
+            }, (err)=>alert('Failed: '+err.message));
+        }
+
+        async function findNearest(){
+            const radius = parseFloat(document.getElementById('radius-km').value||'5');
+            const pos = await new Promise(r=>navigator.geolocation.getCurrentPosition(p=>r(p), ()=>r(null)));
+            const lat = pos?pos.coords.latitude:28.6139; const lng = pos?pos.coords.longitude:77.2090;
+            try{ const data = await fetchJSON(`/api/find_nearest_buses/?lat=${lat}&lng=${lng}&radius=${radius}`);
+                if(data.status==='success'){
+                    const html = (data.nearest_buses||[]).map(b=>`
+                        <div class='item'>
+                            <div><strong>${b.bus_number} (${b.bus_id})</strong><br><span class='muted'>Route: ${b.route_name||'N/A'}</span></div>
+                            <div><span class='status ok'>${b.distance_km} km</span></div>
+                        </div>`).join('');
+                    document.getElementById('nearest-results').innerHTML = html || '<div class="muted">No vehicles nearby</div>';
+                }
+            }catch(e){ console.error(e); }
+        }
+
+        async function searchBuses(){
+            const q = encodeURIComponent(document.getElementById('search-query').value.trim());
+            const data = await fetchJSON(`/api/search_buses/?q=${q}`);
+            if(data.status==='success'){
+                updateBusList((data.buses||[]).map(b=>({
+                    bus_id:b.bus_id, bus_number:b.bus_number, route_name:b.route_name, route_id:b.route_id,
+                    latitude:(b.current_location && b.current_location.latitude)||28.6139,
+                    longitude:(b.current_location && b.current_location.longitude)||77.2090,
+                    last_updated:(b.current_location && b.current_location.last_updated)||new Date().toISOString()
+                })))
+            }
+        }
+
+        async function applyRouteFilter(){
+            const route = document.getElementById('route-filter').value;
+            if(!route){ fetchBusLocations(); return; }
+            const data = await fetchJSON(`/api/search_buses/?route=${encodeURIComponent(route)}`);
+            if(data.status==='success'){
+                updateBusList((data.buses||[]).map(b=>({
+                    bus_id:b.bus_id, bus_number:b.bus_number, route_name:b.route_name, route_id:b.route_id,
+                    latitude:(b.current_location && b.current_location.latitude)||28.6139,
+                    longitude:(b.current_location && b.current_location.longitude)||77.2090,
+                    last_updated:(b.current_location && b.current_location.last_updated)||new Date().toISOString()
+                })))
+            }
+        }
+
+        async function checkDelays(){
+            try{
+                const data = await fetchJSON('/api/get_locations/');
+                if(data.status!=='success'){ return; }
+                const now = new Date();
+                const items = (data.locations||[]).map(loc=>{
+                    const last = new Date(loc.last_updated);
+                    const diff = (now - last)/1000; // seconds
+                    let status='ok', label='ON TIME';
+                    if(diff>180) { status='off'; label='OFFLINE'; }
+                    else if(diff>120) { status='warn'; label='DELAYED'; }
+                    return { ...loc, status, label, agoSec: Math.round(diff) };
+                }).filter(x=>x.status!=='ok');
+
+                const html = items.length? items.map(x=>`
+                    <div class='item'>
+                        <div>
+                            <strong>${x.bus_number} (${x.bus_id})</strong><br>
+                            <span class='muted'>Last: ${new Date(x.last_updated).toLocaleTimeString()}</span>
+                        </div>
+                        <div><span class='status ${x.status}'>${x.label}</span></div>
+                    </div>`).join('') : '<div class="muted">No delayed vehicles detected (last 2 minutes)</div>';
+                document.getElementById('delay-results').innerHTML = html;
+            }catch(e){ console.error(e); }
+        }
+
+        function updateMap(locations){
+            if(typeof google!=='undefined' && map){ updateGoogleMap(locations); }
+            else if(ctx){ updateSimpleMap(locations); }
+        }
+
+        function updateGoogleMap(loc){
+            const activeIds = loc.map(l=>l.bus_id);
+            Object.keys(markers).forEach(id=>{ if(!activeIds.includes(id)){ markers[id].setMap(null); if(infoWindows[id]) infoWindows[id].close(); delete markers[id]; delete infoWindows[id]; }});
+            loc.forEach(l=>{
+                const position = { lat:l.latitude, lng:l.longitude };
+                if(markers[l.bus_id]){ markers[l.bus_id].setPosition(position); }
+                else { markers[l.bus_id] = new google.maps.Marker({ position, map, title:l.bus_id, icon: { url: 'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent(`<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"30\" height=\"30\" viewBox=\"0 0 30 30\"><circle cx=\"15\" cy=\"15\" r=\"12\" fill=\"${'#3498db'}\" stroke=\"${'#2c3e50'}\" stroke-width=\"2\"/><text x=\"15\" y=\"19\" text-anchor=\"middle\" fill=\"white\" font-family=\"Arial\" font-size=\"10\" font-weight=\"bold\">🚍</text></svg>`), scaledSize:new google.maps.Size(30,30), anchor:new google.maps.Point(15,15) } }); }
+                const iw = `<div style='padding:10px;'><h4 style='margin:0 0 8px 0;color:#2c3e50'>${l.bus_id}</h4><div class='muted'>${l.latitude.toFixed(4)}, ${l.longitude.toFixed(4)}</div><div class='muted'>${new Date(l.last_updated).toLocaleTimeString()}</div></div>`;
+                if(infoWindows[l.bus_id]) infoWindows[l.bus_id].setContent(iw); else { infoWindows[l.bus_id] = new google.maps.InfoWindow({ content: iw }); markers[l.bus_id].addListener('click', ()=>{ Object.values(infoWindows).forEach(x=>x.close()); infoWindows[l.bus_id].open(map, markers[l.bus_id]); }); }
+            });
+        }
+
+        // Simple canvas map fallback
+        let simpleMap, ctx; const mapBounds={ minLat:28.5, maxLat:28.7, minLng:77.15, maxLng:77.4 };
+        function initSimpleMap(){
+            if (initialized) return; initialized = true;
+            simpleMap = document.getElementById('map');
+            simpleMap.innerHTML = '<canvas id="mapCanvas"></canvas>';
+            const canvas = document.getElementById('mapCanvas');
+            const r = simpleMap.getBoundingClientRect(); canvas.width=r.width; canvas.height=r.height; canvas.style.width=r.width+'px'; canvas.style.height=r.height+'px';
+            ctx = canvas.getContext('2d');
+            drawMapBackground(); fetchBusLocations(); setInterval(fetchBusLocations, 5000);
+        }
+        function drawMapBackground(){ ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height); ctx.fillStyle='#f0f8ff'; ctx.fillRect(0,0,ctx.canvas.width,ctx.canvas.height); ctx.strokeStyle='#e0e0e0'; for(let i=0;i<=10;i++){ const x=(ctx.canvas.width/10)*i; const y=(ctx.canvas.height/10)*i; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,ctx.canvas.height); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(ctx.canvas.width,y); ctx.stroke(); } ctx.fillStyle='#2c3e50'; ctx.font='bold 18px Arial'; ctx.textAlign='center'; ctx.fillText('Delhi Area - Public Transport', ctx.canvas.width/2, 28); }
+        function latLngToPixel(lat,lng){ const x=((lng-mapBounds.minLng)/(mapBounds.maxLng-mapBounds.minLng))*ctx.canvas.width; const y=((mapBounds.maxLat-lat)/(mapBounds.maxLat-mapBounds.minLat))*ctx.canvas.height; return {x,y}; }
+        function drawBusMarker(l,c='#3498db'){ const p=latLngToPixel(l.latitude,l.longitude); ctx.beginPath(); ctx.arc(p.x,p.y,15,0,Math.PI*2); ctx.fillStyle=c; ctx.fill(); ctx.strokeStyle='#2c3e50'; ctx.lineWidth=2; ctx.stroke(); ctx.fillStyle='#fff'; ctx.font='12px Arial'; ctx.textAlign='center'; ctx.fillText('🚍',p.x,p.y+4); ctx.fillStyle='#2c3e50'; ctx.font='bold 11px Arial'; ctx.fillText(l.bus_number||l.bus_id,p.x,p.y-28); ctx.font='9px Arial'; ctx.fillStyle='#34495e'; ctx.fillText(`(${l.route_name||l.route_id||'Unknown'})`,p.x,p.y-16); }
+        function updateSimpleMap(loc){ drawMapBackground(); loc.forEach((l,i)=>{ const colors=['#3498db','#e74c3c','#2ecc71','#f39c12','#9b59b6']; drawBusMarker(l,colors[i%colors.length]); }); }
+
+        // Hook controls
+        window.onload = function(){
+            document.getElementById('btn-refresh').onclick = fetchBusLocations;
+            document.getElementById('btn-my-location').onclick = useMyLocation;
+            document.getElementById('btn-nearest').onclick = findNearest;
+            document.getElementById('btn-search').onclick = searchBuses;
+            document.getElementById('btn-apply-route').onclick = applyRouteFilter;
+            document.getElementById('btn-delay').onclick = checkDelays;
+            loadRoutes();
+            if (typeof google === 'undefined') initSimpleMap(); else initMap();
+        };
+    </script>
+
+    <!-- Google Maps: add your key below and it will auto-use Google Maps. If not provided, canvas map fallback is used. -->
+    <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDnOhQzKOIz6i3t_a0oK6K2d7bQ7BG2SFU&callback=initMap"></script>
+</body>
+</html>

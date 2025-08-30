@@ -1,59 +1,61 @@
 """
 URL configuration for mytrackingproject project.
 
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
+Custom routing to simple HTML pages served from the project root.
 """
 from django.contrib import admin
 from django.urls import path, include
-from django.views.generic import TemplateView
 from django.conf import settings
-from django.conf.urls.static import static
-from django.http import FileResponse
-from django.shortcuts import render
+from django.http import HttpResponse
 from tracking_app import views as tracking_views
 import os
 
+# Helper to read an HTML file from BASE_DIR
+
+def _serve_html(filename: str) -> HttpResponse:
+    path = os.path.join(settings.BASE_DIR, filename)
+    if os.path.exists(path):
+        with open(path, 'r', encoding='utf-8') as f:
+            return HttpResponse(f.read(), content_type='text/html')
+    return HttpResponse(f'<h1>Page not found</h1><p>Missing {filename}</p>', status=404)
+
+# Public pages
+
 def serve_index(request):
-    """Serve the main tracking interface"""
-    index_path = os.path.join(settings.BASE_DIR, 'index.html')
-    with open(index_path, 'r', encoding='utf-8') as f:
-        content = f.read()
-    from django.http import HttpResponse
-    return HttpResponse(content, content_type='text/html')
+    """Landing page with Get Started button"""
+    return _serve_html('index.html')
+
+
+def serve_select(request):
+    """User type selection page"""
+    return _serve_html('select_type.html')
+
+
+def serve_auth(request):
+    """Auth page (sign in / sign up) for user or admin depending on query param"""
+    return _serve_html('auth.html')
+
+
+def serve_user_dashboard(request):
+    """User dashboard (map + features)"""
+    return _serve_html('user_dashboard.html')
+
+# Admin dashboard (already protected by view)
 
 def serve_admin_dashboard(request):
-    """Serve the admin dashboard"""
-    admin_path = os.path.join(settings.BASE_DIR, 'admin_dashboard.html')
-    if os.path.exists(admin_path):
-        with open(admin_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        from django.http import HttpResponse
-        return HttpResponse(content, content_type='text/html')
-    else:
-        from django.http import HttpResponse
-        return HttpResponse('<h1>Admin Dashboard</h1><p>Admin dashboard page not found. Please create admin_dashboard.html</p>')
+    return tracking_views.admin_dashboard(request)
+
+# Debug page
 
 def serve_debug_test(request):
-    """Serve the debug test page"""
-    debug_path = os.path.join(settings.BASE_DIR, 'debug_test.html')
-    with open(debug_path, 'r', encoding='utf-8') as f:
-        content = f.read()
-    from django.http import HttpResponse
-    return HttpResponse(content, content_type='text/html')
+    return _serve_html('debug_test.html')
 
 urlpatterns = [
     path('', serve_index, name='home'),
+    path('select/', serve_select, name='select_type'),
+    path('auth/', serve_auth, name='auth'),
+    path('user/', serve_user_dashboard, name='user_dashboard'),
+
     path('admin_panel/', tracking_views.admin_dashboard, name='admin_panel'),
     path('debug/', serve_debug_test, name='debug_test'),
     path('admin/', admin.site.urls),
