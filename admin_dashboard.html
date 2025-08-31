@@ -164,6 +164,32 @@
                     <h2 id="total-routes" style="margin: 0; color: #f39c12;">-</h2>
                     <p>Routes</p>
                 </div>
+                <div style="text-align: center; padding: 20px; background: #fdeeee; border-radius: 8px;">
+                    <h2 id="updates-1h" style="margin: 0; color: #c0392b;">-</h2>
+                    <p>Updates (1h)</p>
+                </div>
+                <div style="text-align: center; padding: 20px; background: #eef9ff; border-radius: 8px;">
+                    <h2 id="updates-24h" style="margin: 0; color: #2980b9;">-</h2>
+                    <p>Updates (24h)</p>
+                </div>
+                <div style="text-align: center; padding: 20px; background: #eafaf1; border-radius: 8px;">
+                    <h2 id="active-recent" style="margin: 0; color: #27ae60;">-</h2>
+                    <p>Active Recently (3m)</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="panel">
+            <h3>Analytics</h3>
+            <div style="display:grid; gap: 14px;">
+                <div>
+                    <h4 style="margin:0 0 6px 0;">Route Breakdown</h4>
+                    <div id="route-breakdown" class="info-list"></div>
+                </div>
+                <div>
+                    <h4 style="margin:0 0 6px 0;">Recent Activity</h4>
+                    <div id="recent-activity" class="info-list"></div>
+                </div>
             </div>
         </div>
 
@@ -279,9 +305,10 @@
 
         async function loadStats() {
             try {
-                const [busesData, routesData] = await Promise.all([
+                const [busesData, routesData, analyticsData] = await Promise.all([
                     fetchJSON('/api/admin/list_buses/'),
-                    fetchJSON('/api/routes/')
+                    fetchJSON('/api/routes/'),
+                    fetchJSON('/api/admin/analytics/')
                 ]);
 
                 if (busesData.status === 'success') {
@@ -295,9 +322,46 @@
                 if (routesData.status === 'success') {
                     document.getElementById('total-routes').textContent = routesData.routes.length;
                 }
+
+                if (analyticsData.status === 'success') {
+                    const s = analyticsData.summary;
+                    document.getElementById('updates-1h').textContent = s.updates_last_hour;
+                    document.getElementById('updates-24h').textContent = s.updates_last_24h;
+                    document.getElementById('active-recent').textContent = s.active_recent;
+                    renderRouteBreakdown(analyticsData.routes);
+                    renderRecentActivity(analyticsData.recent_activity);
+                }
             } catch (error) {
                 console.error('Error loading stats:', error);
             }
+        }
+
+        function renderRouteBreakdown(items){
+            const el = document.getElementById('route-breakdown');
+            if(!items || items.length===0){ el.innerHTML = '<div style="color:#666">No route data</div>'; return; }
+            el.innerHTML = items.map(r=>`<div class="bus-item">
+                <div class="bus-details">
+                    <h4>${r.name} (${r.route_id})</h4>
+                    <p><strong>Buses:</strong> ${r.buses}</p>
+                </div>
+                <div>
+                    <div class="status ${r.active_recent>0?'active':'inactive'}">${r.active_recent} active</div>
+                </div>
+            </div>`).join('');
+        }
+
+        function renderRecentActivity(items){
+            const el = document.getElementById('recent-activity');
+            if(!items || items.length===0){ el.innerHTML = '<div style="color:#666">No recent activity</div>'; return; }
+            el.innerHTML = items.map(a=>`<div class="bus-item">
+                <div class="bus-details">
+                    <h4>${a.bus_number} (${a.bus_id})</h4>
+                    <p><strong>Route:</strong> ${a.route_id||'N/A'} | <strong>Coords:</strong> ${a.latitude.toFixed(4)}, ${a.longitude.toFixed(4)}</p>
+                </div>
+                <div>
+                    <div class="status active">${new Date(a.last_updated).toLocaleTimeString()}</div>
+                </div>
+            </div>`).join('');
         }
 
         async function loadBuses() {

@@ -32,27 +32,73 @@
     <h2 id="title">Authentication</h2>
     <p class="muted" id="subtitle">Sign in or sign up to continue</p>
 
+    <!-- Admin sign in / sign up -->
+
     <div id="admin-only" class="panel" style="display:none;">
-      <h3>Admin Sign In</h3>
-      <div style="display:grid; gap:12px;">
-        <div>
-          <label>Username
-            <input id="admin-username" type="text" placeholder="admin" />
-          </label>
-        </div>
-        <div>
-          <label>Password
-            <input id="admin-password" type="password" placeholder="••••••••" />
-          </label>
-        </div>
-        <div style="display:flex; gap:10px; align-items:center;">
-          <button class="btn" onclick="adminLogin()">Sign In</button>
-          <span id="admin-msg" class="muted"></span>
+      <div style="display:flex; gap:12px; margin-bottom:10px;">
+        <button class="btn" id="btn-admin-signin" onclick="showAdminTab('signin')">Admin Sign In</button>
+        <button class="btn" id="btn-admin-signup" style="background:#27ae60" onclick="showAdminTab('signup')">Admin Sign Up</button>
+      </div>
+
+      <div id="admin-signin">
+        <h3>Admin Sign In</h3>
+        <div style="display:grid; gap:12px;">
+          <div>
+            <label>Username
+              <input id="admin-username" type="text" placeholder="admin" />
+            </label>
+          </div>
+          <div>
+            <label>Password
+              <input id="admin-password" type="password" placeholder="••••••••" />
+            </label>
+          </div>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <button class="btn" onclick="adminLogin()">Sign In</button>
+            <span id="admin-msg" class="muted"></span>
+          </div>
         </div>
       </div>
-      <p class="muted" style="margin-top:10px;">Admin accounts are managed in Django. No sign-up here.</p>
+
+      <div id="admin-signup" style="display:none;">
+        <h3>Create Admin Account</h3>
+        <div style="display:grid; gap:12px;">
+          <div>
+            <label>Full Name
+              <input id="as-name" type="text" placeholder="Your name" />
+            </label>
+          </div>
+          <div>
+            <label>Username
+              <input id="as-username" type="text" placeholder="choose a username" />
+            </label>
+          </div>
+          <div>
+            <label>Email (optional)
+              <input id="as-email" type="email" placeholder="you@example.com" />
+            </label>
+          </div>
+          <div>
+            <label>Password
+              <input id="as-pass" type="password" placeholder="min 6 characters" />
+            </label>
+          </div>
+          <div>
+            <label>Admin Access Code (optional)
+              <input id="as-code" type="text" placeholder="if provided by admin" />
+            </label>
+          </div>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <button class="btn" style="background:#27ae60" onclick="adminSignup()">Create Account</button>
+            <span id="admin-su-msg" class="muted"></span>
+          </div>
+        </div>
+        <p class="muted" style="margin-top:8px;">For development use. In production, disable public admin signup.</p>
+      </div>
     </div>
 
+
+    <!-- user sign in -->
     <div id="user-cards" class="row">
       <div class="panel">
         <h3>Sign In (User)</h3>
@@ -74,6 +120,8 @@
           </div>
         </div>
       </div>
+
+      <!-- user sign up -->
 
       <div class="panel">
         <h3>Sign Up (User)</h3>
@@ -112,9 +160,10 @@
 
     if (type === 'admin') {
       document.getElementById('title').textContent = 'Admin Authentication';
-      document.getElementById('subtitle').textContent = 'Sign in to access the Admin Panel';
+      document.getElementById('subtitle').textContent = 'Sign in or sign up to access the Admin Panel';
       document.getElementById('admin-only').style.display = 'block';
       document.getElementById('user-cards').style.display = 'none';
+      showAdminTab('signin');
     }
 
     function continueGuest(){
@@ -158,10 +207,42 @@
       try {
         const res = await fetch('/api/admin/login/', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ username:u, password:p }) });
         const data = await res.json();
-        if (data.status === 'success') { msg.textContent = 'Success! Redirecting...'; msg.style.color = '#27ae60'; setTimeout(()=> location.href='/user/?role=admin', 500); }
+        if (data.status === 'success') { msg.textContent = 'Success! Redirecting...'; msg.style.color = '#27ae60'; setTimeout(()=> location.href = (data.redirect_url||'/admin_panel/'), 500); }
         else { msg.textContent = data.error || 'Login failed'; msg.style.color = '#e74c3c'; }
       } catch (e) { msg.textContent = 'Network error'; msg.style.color = '#e74c3c'; }
     }
+
+    function showAdminTab(tab){
+      const siBtn = document.getElementById('btn-admin-signin');
+      const suBtn = document.getElementById('btn-admin-signup');
+      const si = document.getElementById('admin-signin');
+      const su = document.getElementById('admin-signup');
+      if (tab==='signup'){
+        si.style.display='none'; su.style.display='block';
+        siBtn.style.background='#3498db'; suBtn.style.background='#27ae60';
+      } else {
+        si.style.display='block'; su.style.display='none';
+        siBtn.style.background='#27ae60'; suBtn.style.background='#3498db';
+      }
+    }
+
+    async function adminSignup(){
+      const full_name = document.getElementById('as-name').value.trim();
+      const username = document.getElementById('as-username').value.trim();
+      const email = document.getElementById('as-email').value.trim();
+      const password = document.getElementById('as-pass').value;
+      const admin_code = document.getElementById('as-code').value.trim();
+      const msg = document.getElementById('admin-su-msg');
+      if(!username || !password){ msg.textContent = 'Username and password are required'; msg.style.color = '#e74c3c'; return; }
+      msg.textContent = 'Creating account...'; msg.style.color = '#0f4871';
+      try{
+        const res = await fetch('/api/admin/signup/', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ full_name, username, email, password, admin_code })});
+        const data = await res.json();
+        if(data.status==='success'){ msg.textContent = 'Account created! Redirecting...'; msg.style.color = '#27ae60'; setTimeout(()=> location.href = (data.redirect_url||'/admin_panel/'), 600); }
+        else { msg.textContent = data.error || 'Sign up failed'; msg.style.color = '#e74c3c'; }
+      }catch(e){ msg.textContent='Network error'; msg.style.color='#e74c3c'; }
+    }
+
   </script>
 </body>
 </html>

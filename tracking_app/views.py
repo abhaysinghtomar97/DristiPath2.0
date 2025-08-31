@@ -407,10 +407,128 @@ def admin_authenticate(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 @csrf_exempt
+@require_http_methods(["POST"])
+def admin_signup(request):
+    """Create a new admin (staff) user. For development use. In production, restrict this."""
+    try:
+        data = json.loads(request.body)
+        username = data.get('username', '').strip()
+        password = data.get('password', '')
+        email = data.get('email', '').strip()
+        full_name = data.get('full_name', '').strip()
+        admin_code = data.get('admin_code', '')  # optional code for gating
+        
+        if not username or not password:
+            return JsonResponse({'error': 'Username and password are required'}, status=400)
+        
+        # Basic password policy
+        if len(password) < 6:
+            return JsonResponse({'error': 'Password must be at least 6 characters long'}, status=400)
+        
+        # Optional: gate behind a simple code if provided by client
+        from django.conf import settings
+        expected_code = getattr(settings, 'ADMIN_SIGNUP_CODE', '')
+        if expected_code:
+            if admin_code != expected_code:
+                return JsonResponse({'error': 'Invalid admin access code'}, status=403)
+        
+        # Ensure username unique
+        if User.objects.filter(username=username).exists():
+            return JsonResponse({'error': 'Username already exists'}, status=400)
+        
+        user = User.objects.create_user(username=username, email=email or None, password=password)
+        if full_name:
+            # Split full name into first/last if possible
+            parts = full_name.split()
+            user.first_name = parts[0]
+            if len(parts) > 1:
+                user.last_name = ' '.join(parts[1:])
+        user.is_staff = True
+        user.save()
+        
+        login(request, user)
+        return JsonResponse({'status': 'success', 'message': 'Admin account created', 'redirect_url': '/admin_panel/'})
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
 def admin_logout_view(request):
     """Admin logout endpoint"""
     logout(request)
     return JsonResponse({'status': 'success', 'message': 'Logged out successfully'})
+
+# ============= Admin Analytics =============
+
+@require_http_methods(["GET"])
+@login_required
+def admin_analytics(request):
+    """Return analytics data for admin dashboard."""
+    if not request.user.is_staff:
+        return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
+    try:
+        now = timezone.now()
+        one_hour_ago = now - timedelta(hours=1)
+        one_day_ago = now - timedelta(days=1)
+        five_min_ago = now - timedelta(minutes=5)
+        three_min_ago = now - timedelta(minutes=3)
+        
+        total_buses = Bus.objects.count()
+        active_buses = Bus.objects.filter(is_active=True).count()
+        total_routes = Route.objects.count()
+        total_locations = BusLocation.objects.count()
+        loc_last_hour = BusLocation.objects.filter(last_updated__gte=one_hour_ago).count()
+        loc_last_day = BusLocation.objects.filter(last_updated__gte=one_day_ago).count()
+        
+        # Buses with activity in last 3 minutes
+        recent_bus_ids = BusLocation.objects.filter(last_updated__gte=three_min_ago).values_list('bus_id', flat=True).distinct()
+        active_recent = Bus.objects.filter(id__in=recent_bus_ids).count()
+        
+        # Per-route stats
+        route_stats = []
+        for route in Route.objects.all():
+            buses_qs = route.buses.all()
+            bus_ids = list(buses_qs.values_list('id', flat=True))
+            recent_count = BusLocation.objects.filter(bus_id__in=bus_ids, last_updated__gte=three_min_ago).values('bus_id').distinct().count()
+            route_stats.append({
+                'route_id': route.route_id,
+                'name': route.name,
+                'buses': buses_qs.count(),
+                'active_recent': recent_count,
+            })
+        
+        # Recent activity entries
+        recent_locations = BusLocation.objects.select_related('bus').order_by('-last_updated')[:20]
+        recent_activity = [{
+            'bus_id': bl.bus.bus_id,
+            'bus_number': bl.bus.bus_number,
+            'route_id': bl.bus.route.route_id if bl.bus.route else None,
+            'latitude': bl.latitude,
+            'longitude': bl.longitude,
+            'speed': bl.speed,
+            'heading': bl.heading,
+            'last_updated': bl.last_updated.isoformat(),
+        } for bl in recent_locations]
+        
+        data = {
+            'status': 'success',
+            'summary': {
+                'total_buses': total_buses,
+                'active_buses': active_buses,
+                'total_routes': total_routes,
+                'total_locations': total_locations,
+                'updates_last_hour': loc_last_hour,
+                'updates_last_24h': loc_last_day,
+                'active_recent': active_recent,
+            },
+            'routes': route_stats,
+            'recent_activity': recent_activity,
+            'generated_at': now.isoformat(),
+        }
+        return JsonResponse(data)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 # ============= Web Views =============
 
