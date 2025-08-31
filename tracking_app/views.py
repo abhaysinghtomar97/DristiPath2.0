@@ -667,3 +667,6 @@ def admin_dashboard(request):
         return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
     # Render template
     return render(request, 'admin_dashboard.html')
+
+def serve_debug_test(request):
+    return render(request, 'debug_test.html')
