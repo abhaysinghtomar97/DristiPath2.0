@@ -19,17 +19,26 @@ class Route(models.Model):
         return f"{self.route_id} - {self.name}"
 
 class Bus(models.Model):
-    """Bus information"""
+    """Vehicle information (bus/metro/train/etc.)"""
+    VEHICLE_TYPES = [
+        ("bus", "Bus"),
+        ("metro", "Metro"),
+        ("tram", "Tram"),
+        ("train", "Train"),
+        ("ferry", "Ferry"),
+    ]
+
     bus_id = models.CharField(max_length=50, unique=True)
     route = models.ForeignKey(Route, on_delete=models.CASCADE, related_name='buses')
     driver_name = models.CharField(max_length=100, blank=True)
     bus_number = models.CharField(max_length=50)
+    vehicle_type = models.CharField(max_length=20, choices=VEHICLE_TYPES, default="bus")
     capacity = models.IntegerField(default=50)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):
-        return f"{self.bus_id} - {self.bus_number}"
+        return f"{self.bus_id} - {self.bus_number} ({self.vehicle_type})"
     
     def get_current_location(self):
         """Get the latest location of this bus"""
