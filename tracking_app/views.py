@@ -212,10 +212,11 @@ def find_nearest_buses(request):
 
 @require_http_methods(["GET"])
 def search_buses(request):
-    """Search buses by various criteria"""
+    """Search vehicles by various criteria"""
     try:
         query = request.GET.get('q', '').strip()
         route_id = request.GET.get('route')
+        vtype = (request.GET.get('type') or '').strip().lower()
         
         buses = Bus.objects.filter(is_active=True).select_related('route')
         
@@ -229,8 +230,10 @@ def search_buses(request):
         
         if route_id:
             buses = buses.filter(route__route_id=route_id)
+        if vtype:
+            buses = buses.filter(vehicle_type=vtype)
         
-        # Get current locations for found buses
+        # Get current locations for found vehicles
         buses_data = []
         for bus in buses:
             current_location = bus.get_current_location()
@@ -241,6 +244,7 @@ def search_buses(request):
                 'route_name': bus.route.name if bus.route else None,
                 'driver_name': bus.driver_name,
                 'capacity': bus.capacity,
+                'vehicle_type': bus.vehicle_type,
                 'current_location': {
                     'latitude': current_location.latitude,
                     'longitude': current_location.longitude,
@@ -253,7 +257,8 @@ def search_buses(request):
             'status': 'success',
             'buses': buses_data,
             'count': len(buses_data),
-            'query': query
+            'query': query,
+            'type': vtype,
         })
         
     except Exception as e:
@@ -292,14 +297,24 @@ def get_routes(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def admin_add_bus(request):
-    """Admin endpoint to add a new bus"""
+    """Admin endpoint to add a new vehicle"""
     try:
+        # Require staff
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
+
         data = json.loads(request.body)
         bus_id = data.get('bus_id')
         bus_number = data.get('bus_number')
         route_id = data.get('route_id')
         driver_name = data.get('driver_name', '')
         capacity = data.get('capacity', 50)
+        vehicle_type = (data.get('vehicle_type') or 'bus').lower()
+
+        # Validate vehicle_type
+        valid_types = {choice[0] for choice in Bus.VEHICLE_TYPES}
+        if vehicle_type not in valid_types:
+            return JsonResponse({'error': f'Invalid vehicle_type. Allowed: {sorted(list(valid_types))}'}, status=400)
         
         if not bus_id or not bus_number or not route_id:
             return JsonResponse({'error': 'Missing required fields'}, status=400)
@@ -310,29 +325,31 @@ def admin_add_bus(request):
         except Route.DoesNotExist:
             return JsonResponse({'error': 'Route not found'}, status=404)
         
-        # Create bus
+        # Create vehicle
         bus, created = Bus.objects.get_or_create(
             bus_id=bus_id,
             defaults={
                 'bus_number': bus_number,
                 'route': route,
                 'driver_name': driver_name,
-                'capacity': capacity
+                'capacity': capacity,
+                'vehicle_type': vehicle_type,
             }
         )
         
         if not created:
-            return JsonResponse({'error': 'Bus with this ID already exists'}, status=400)
+            return JsonResponse({'error': 'Vehicle with this ID already exists'}, status=400)
         
         return JsonResponse({
             'status': 'success',
-            'message': 'Bus added successfully',
-            'bus': {
+            'message': 'Vehicle added successfully',
+            'vehicle': {
                 'bus_id': bus.bus_id,
                 'bus_number': bus.bus_number,
                 'route_id': bus.route.route_id,
                 'driver_name': bus.driver_name,
-                'capacity': bus.capacity
+                'capacity': bus.capacity,
+                'vehicle_type': bus.vehicle_type,
             }
         })
         
@@ -343,8 +360,11 @@ def admin_add_bus(request):
 
 @require_http_methods(["GET"])
 def admin_list_buses(request):
-    """Admin endpoint to list all buses"""
+    """Admin endpoint to list all vehicles"""
     try:
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
+
         buses = Bus.objects.all().select_related('route')
         
         buses_data = []
@@ -358,6 +378,7 @@ def admin_list_buses(request):
                 'route_name': bus.route.name if bus.route else None,
                 'driver_name': bus.driver_name,
                 'capacity': bus.capacity,
+                'vehicle_type': bus.vehicle_type,
                 'is_active': bus.is_active,
                 'created_at': bus.created_at.isoformat(),
                 'current_location': {
@@ -459,6 +480,91 @@ def admin_logout_view(request):
     logout(request)
     return JsonResponse({'status': 'success', 'message': 'Logged out successfully'})
 
+# ============= Admin Management Endpoints =============
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def admin_toggle_bus_status(request):
+    """Toggle vehicle (bus) active status."""
+    try:
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
+        data = json.loads(request.body)
+        bus_id = data.get('bus_id')
+        is_active = data.get('is_active')
+        if bus_id is None or is_active is None:
+            return JsonResponse({'error': 'bus_id and is_active are required'}, status=400)
+        try:
+            bus = Bus.objects.get(bus_id=bus_id)
+        except Bus.DoesNotExist:
+            return JsonResponse({'error': 'Vehicle not found'}, status=404)
+        bus.is_active = bool(is_active)
+        bus.save(update_fields=['is_active'])
+        return JsonResponse({'status': 'success', 'bus_id': bus.bus_id, 'is_active': bus.is_active})
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def admin_add_route(request):
+    """Create a new route (admin)."""
+    try:
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
+        data = json.loads(request.body)
+        route_id = data.get('route_id')
+        name = data.get('name')
+        start_location = data.get('start_location')
+        end_location = data.get('end_location')
+        description = data.get('description', '')
+        if not route_id or not name or not start_location or not end_location:
+            return JsonResponse({'error': 'Missing required fields'}, status=400)
+        route, created = Route.objects.get_or_create(
+            route_id=route_id,
+            defaults={
+                'name': name,
+                'start_location': start_location,
+                'end_location': end_location,
+                'description': description
+            }
+        )
+        if not created:
+            return JsonResponse({'error': 'Route with this ID already exists'}, status=400)
+        return JsonResponse({'status': 'success', 'route': {
+            'route_id': route.route_id,
+            'name': route.name,
+            'start_location': route.start_location,
+            'end_location': route.end_location,
+            'description': route.description,
+        }})
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def admin_clean_old_locations(request):
+    """Delete BusLocation rows older than N days (default 1)."""
+    try:
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
+
+        data = json.loads(request.body) if request.body else {}
+        days = int(data.get('days', 1))  # default set to 1 day
+        cutoff = timezone.now() - timedelta(days=days)
+
+        deleted, _ = BusLocation.objects.filter(last_updated__lt=cutoff).delete()
+        return JsonResponse({'status': 'success', 'deleted': deleted, 'days': days})
+
+    except ValueError:
+        return JsonResponse({'error': 'Invalid days value'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
 # ============= Admin Analytics =============
 
 @require_http_methods(["GET"])
@@ -541,16 +647,5 @@ def admin_dashboard(request):
     """Admin dashboard view - requires authentication"""
     if not request.user.is_staff:
         return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
-    
-    # Serve the admin dashboard HTML file directly
-    import os
-    from django.conf import settings
-    from django.http import HttpResponse
-    
-    admin_path = os.path.join(settings.BASE_DIR, 'admin_dashboard.html')
-    if os.path.exists(admin_path):
-        with open(admin_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        return HttpResponse(content, content_type='text/html')
-    else:
-        return HttpResponse('<h1>Admin Dashboard</h1><p>Admin dashboard page not found.</p>')
+    # Render template
+    return render(request, 'admin_dashboard.html')

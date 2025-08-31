@@ -23,6 +23,9 @@ urlpatterns = [
     path('admin/add_bus/', views.admin_add_bus, name='admin_add_bus'),
     path('admin/list_buses/', views.admin_list_buses, name='admin_list_buses'),
     path('admin/analytics/', views.admin_analytics, name='admin_analytics'),
+    path('admin/toggle_bus_status/', views.admin_toggle_bus_status, name='admin_toggle_bus_status'),
+    path('admin/add_route/', views.admin_add_route, name='admin_add_route'),
+    path('admin/clean_old_locations/', views.admin_clean_old_locations, name='admin_clean_old_locations'),
     
     # Web views
     path('dashboard/', views.home, name='dashboard'),

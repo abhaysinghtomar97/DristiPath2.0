@@ -8,37 +8,25 @@ from django.urls import path, include
 from django.conf import settings
 from django.http import HttpResponse
 from tracking_app import views as tracking_views
+from django.shortcuts import render
 import os
 
-# Helper to read an HTML file from BASE_DIR
-
-def _serve_html(filename: str) -> HttpResponse:
-    path = os.path.join(settings.BASE_DIR, filename)
-    if os.path.exists(path):
-        with open(path, 'r', encoding='utf-8') as f:
-            return HttpResponse(f.read(), content_type='text/html')
-    return HttpResponse(f'<h1>Page not found</h1><p>Missing {filename}</p>', status=404)
-
-# Public pages
+# Public pages rendered via templates
 
 def serve_index(request):
-    """Landing page with Get Started button"""
-    return _serve_html('index.html')
+    return render(request, 'index.html')
 
 
 def serve_select(request):
-    """User type selection page"""
-    return _serve_html('select_type.html')
+    return render(request, 'select_type.html')
 
 
 def serve_auth(request):
-    """Auth page (sign in / sign up) for user or admin depending on query param"""
-    return _serve_html('auth.html')
+    return render(request, 'auth.html')
 
 
 def serve_user_dashboard(request):
-    """User dashboard (map + features)"""
-    return _serve_html('user_dashboard.html')
+    return render(request, 'user_dashboard.html')
 
 # Admin dashboard (already protected by view)
 
