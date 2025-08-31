@@ -11,6 +11,7 @@ from tracking_app import views as tracking_views
 from django.shortcuts import render
 import os
 
+
 # Public pages rendered via templates
 
 def serve_index(request):
@@ -36,7 +37,7 @@ def serve_admin_dashboard(request):
 # Debug page
 
 def serve_debug_test(request):
-    return _serve_html('debug_test.html')
+    return render(request, 'debug_test.html')
 
 urlpatterns = [
     path('', serve_index, name='home'),

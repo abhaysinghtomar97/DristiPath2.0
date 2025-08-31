@@ -1,1 +1,2 @@
-web: gunicorn BUS_TRACKING_PROJECT.wsgi
+web: gunicorn mytrackingproject.wsgi --log-file -
+worker: python bus_simulator.py
