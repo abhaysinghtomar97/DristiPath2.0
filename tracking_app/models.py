@@ -1,19 +1,26 @@
 from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import User
+from django.conf import settings
 from math import radians, cos, sin, asin, sqrt
 
 # Create your models here.
 
 class Route(models.Model):
-    """Bus route information"""
-    route_id = models.CharField(max_length=50, unique=True)
+    """Route information (per admin owner)"""
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, related_name='owned_routes')
+    route_id = models.CharField(max_length=50)
     name = models.CharField(max_length=100)
     start_location = models.CharField(max_length=200)
     end_location = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['owner', 'route_id'], name='unique_route_per_owner')
+        ]
     
     def __str__(self):
         return f"{self.route_id} - {self.name}"
@@ -28,7 +35,8 @@ class Bus(models.Model):
         ("ferry", "Ferry"),
     ]
 
-    bus_id = models.CharField(max_length=50, unique=True)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True, blank=True, related_name='owned_buses')
+    bus_id = models.CharField(max_length=50)
     route = models.ForeignKey(Route, on_delete=models.CASCADE, related_name='buses')
     driver_name = models.CharField(max_length=100, blank=True)
     bus_number = models.CharField(max_length=50)
@@ -36,6 +44,11 @@ class Bus(models.Model):
     capacity = models.IntegerField(default=50)
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['owner', 'bus_id'], name='unique_vehicle_per_owner')
+        ]
     
     def __str__(self):
         return f"{self.bus_id} - {self.bus_number} ({self.vehicle_type})"

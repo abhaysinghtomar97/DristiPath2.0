@@ -26,6 +26,7 @@ urlpatterns = [
     path('admin/toggle_bus_status/', views.admin_toggle_bus_status, name='admin_toggle_bus_status'),
     path('admin/add_route/', views.admin_add_route, name='admin_add_route'),
     path('admin/clean_old_locations/', views.admin_clean_old_locations, name='admin_clean_old_locations'),
+    path('admin/list_routes/', views.admin_list_routes, name='admin_list_routes'),
     
     # Web views
     path('dashboard/', views.home, name='dashboard'),

@@ -266,7 +266,7 @@ def search_buses(request):
 
 @require_http_methods(["GET"])
 def get_routes(request):
-    """Get all available routes"""
+    """Get all available routes (public aggregator across owners)"""
     try:
         routes = Route.objects.filter(is_active=True).prefetch_related('buses')
         
@@ -297,9 +297,8 @@ def get_routes(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def admin_add_bus(request):
-    """Admin endpoint to add a new vehicle"""
+    """Admin endpoint to add a new vehicle owned by the current admin"""
     try:
-        # Require staff
         if not request.user.is_authenticated or not request.user.is_staff:
             return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
 
@@ -311,22 +310,21 @@ def admin_add_bus(request):
         capacity = data.get('capacity', 50)
         vehicle_type = (data.get('vehicle_type') or 'bus').lower()
 
-        # Validate vehicle_type
         valid_types = {choice[0] for choice in Bus.VEHICLE_TYPES}
         if vehicle_type not in valid_types:
             return JsonResponse({'error': f'Invalid vehicle_type. Allowed: {sorted(list(valid_types))}'}, status=400)
-        
         if not bus_id or not bus_number or not route_id:
             return JsonResponse({'error': 'Missing required fields'}, status=400)
-        
-        # Check if route exists
+
+        # Route must belong to this admin
         try:
-            route = Route.objects.get(route_id=route_id)
+            route = Route.objects.get(route_id=route_id, owner=request.user)
         except Route.DoesNotExist:
-            return JsonResponse({'error': 'Route not found'}, status=404)
-        
-        # Create vehicle
+            return JsonResponse({'error': 'Route not found for this admin'}, status=404)
+
+        # Create vehicle scoped to owner
         bus, created = Bus.objects.get_or_create(
+            owner=request.user,
             bus_id=bus_id,
             defaults={
                 'bus_number': bus_number,
@@ -334,12 +332,12 @@ def admin_add_bus(request):
                 'driver_name': driver_name,
                 'capacity': capacity,
                 'vehicle_type': vehicle_type,
+                'is_active': True,
             }
         )
-        
         if not created:
-            return JsonResponse({'error': 'Vehicle with this ID already exists'}, status=400)
-        
+            return JsonResponse({'error': 'Vehicle with this ID already exists for this admin'}, status=400)
+
         return JsonResponse({
             'status': 'success',
             'message': 'Vehicle added successfully',
@@ -352,7 +350,6 @@ def admin_add_bus(request):
                 'vehicle_type': bus.vehicle_type,
             }
         })
-        
     except json.JSONDecodeError:
         return JsonResponse({'error': 'Invalid JSON data'}, status=400)
     except Exception as e:
@@ -360,12 +357,12 @@ def admin_add_bus(request):
 
 @require_http_methods(["GET"])
 def admin_list_buses(request):
-    """Admin endpoint to list all vehicles"""
+    """Admin endpoint to list all vehicles owned by current admin"""
     try:
         if not request.user.is_authenticated or not request.user.is_staff:
             return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
 
-        buses = Bus.objects.all().select_related('route')
+        buses = Bus.objects.filter(owner=request.user).select_related('route')
         
         buses_data = []
         for bus in buses:
@@ -485,7 +482,7 @@ def admin_logout_view(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def admin_toggle_bus_status(request):
-    """Toggle vehicle (bus) active status."""
+    """Toggle vehicle (bus) active status for this admin's vehicle."""
     try:
         if not request.user.is_authenticated or not request.user.is_staff:
             return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
@@ -495,9 +492,9 @@ def admin_toggle_bus_status(request):
         if bus_id is None or is_active is None:
             return JsonResponse({'error': 'bus_id and is_active are required'}, status=400)
         try:
-            bus = Bus.objects.get(bus_id=bus_id)
+            bus = Bus.objects.get(owner=request.user, bus_id=bus_id)
         except Bus.DoesNotExist:
-            return JsonResponse({'error': 'Vehicle not found'}, status=404)
+            return JsonResponse({'error': 'Vehicle not found for this admin'}, status=404)
         bus.is_active = bool(is_active)
         bus.save(update_fields=['is_active'])
         return JsonResponse({'status': 'success', 'bus_id': bus.bus_id, 'is_active': bus.is_active})
@@ -509,7 +506,7 @@ def admin_toggle_bus_status(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def admin_add_route(request):
-    """Create a new route (admin)."""
+    """Create a new route owned by the current admin."""
     try:
         if not request.user.is_authenticated or not request.user.is_staff:
             return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
@@ -522,6 +519,7 @@ def admin_add_route(request):
         if not route_id or not name or not start_location or not end_location:
             return JsonResponse({'error': 'Missing required fields'}, status=400)
         route, created = Route.objects.get_or_create(
+            owner=request.user,
             route_id=route_id,
             defaults={
                 'name': name,
@@ -531,7 +529,7 @@ def admin_add_route(request):
             }
         )
         if not created:
-            return JsonResponse({'error': 'Route with this ID already exists'}, status=400)
+            return JsonResponse({'error': 'Route with this ID already exists for this admin'}, status=400)
         return JsonResponse({'status': 'success', 'route': {
             'route_id': route.route_id,
             'name': route.name,
@@ -547,15 +545,15 @@ def admin_add_route(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def admin_clean_old_locations(request):
-    """Delete BusLocation rows older than N days (default 1)."""
+    """Delete BusLocation rows older than N days (default 7) for current admin's vehicles."""
     try:
         if not request.user.is_authenticated or not request.user.is_staff:
             return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
-
         data = json.loads(request.body) if request.body else {}
-        days = int(data.get('days', 1))  # default set to 1 day
+        days = int(data.get('days', 7))
         cutoff = timezone.now() - timedelta(days=days)
-
+        deleted, _ = BusLocation.objects.filter(bus__owner=request.user, last_updated__lt=cutoff).delete()
+        return JsonResponse({'status': 'success', 'deleted': deleted, 'days': days})
         deleted, _ = BusLocation.objects.filter(last_updated__lt=cutoff).delete()
         return JsonResponse({'status': 'success', 'deleted': deleted, 'days': days})
 
@@ -565,12 +563,32 @@ def admin_clean_old_locations(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
+# ============= Admin Routes List =============
+
+@require_http_methods(["GET"])
+def admin_list_routes(request):
+    if not request.user.is_authenticated or not request.user.is_staff:
+        return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
+    try:
+        routes = Route.objects.filter(owner=request.user, is_active=True)
+        data = [{
+            'route_id': r.route_id,
+            'name': r.name,
+            'start_location': r.start_location,
+            'end_location': r.end_location,
+            'description': r.description,
+            'created_at': r.created_at.isoformat(),
+        } for r in routes]
+        return JsonResponse({'status': 'success', 'routes': data, 'count': len(data)})
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
 # ============= Admin Analytics =============
 
 @require_http_methods(["GET"])
 @login_required
 def admin_analytics(request):
-    """Return analytics data for admin dashboard."""
+    """Return analytics data for admin dashboard, scoped to current admin."""
     if not request.user.is_staff:
         return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
     try:
@@ -580,20 +598,20 @@ def admin_analytics(request):
         five_min_ago = now - timedelta(minutes=5)
         three_min_ago = now - timedelta(minutes=3)
         
-        total_buses = Bus.objects.count()
-        active_buses = Bus.objects.filter(is_active=True).count()
-        total_routes = Route.objects.count()
-        total_locations = BusLocation.objects.count()
-        loc_last_hour = BusLocation.objects.filter(last_updated__gte=one_hour_ago).count()
-        loc_last_day = BusLocation.objects.filter(last_updated__gte=one_day_ago).count()
+        total_buses = Bus.objects.filter(owner=request.user).count()
+        active_buses = Bus.objects.filter(owner=request.user, is_active=True).count()
+        total_routes = Route.objects.filter(owner=request.user).count()
+        total_locations = BusLocation.objects.filter(bus__owner=request.user).count()
+        loc_last_hour = BusLocation.objects.filter(bus__owner=request.user, last_updated__gte=one_hour_ago).count()
+        loc_last_day = BusLocation.objects.filter(bus__owner=request.user, last_updated__gte=one_day_ago).count()
         
         # Buses with activity in last 3 minutes
-        recent_bus_ids = BusLocation.objects.filter(last_updated__gte=three_min_ago).values_list('bus_id', flat=True).distinct()
-        active_recent = Bus.objects.filter(id__in=recent_bus_ids).count()
+        recent_bus_ids = BusLocation.objects.filter(bus__owner=request.user, last_updated__gte=three_min_ago).values_list('bus_id', flat=True).distinct()
+        active_recent = Bus.objects.filter(owner=request.user, id__in=recent_bus_ids).count()
         
         # Per-route stats
         route_stats = []
-        for route in Route.objects.all():
+        for route in Route.objects.filter(owner=request.user):
             buses_qs = route.buses.all()
             bus_ids = list(buses_qs.values_list('id', flat=True))
             recent_count = BusLocation.objects.filter(bus_id__in=bus_ids, last_updated__gte=three_min_ago).values('bus_id').distinct().count()
@@ -605,7 +623,7 @@ def admin_analytics(request):
             })
         
         # Recent activity entries
-        recent_locations = BusLocation.objects.select_related('bus').order_by('-last_updated')[:20]
+        recent_locations = BusLocation.objects.select_related('bus').filter(bus__owner=request.user).order_by('-last_updated')[:20]
         recent_activity = [{
             'bus_id': bl.bus.bus_id,
             'bus_number': bl.bus.bus_number,
