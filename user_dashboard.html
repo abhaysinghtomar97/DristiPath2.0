@@ -103,6 +103,7 @@
         })();
 
         let map; let markers = {}; let infoWindows = {}; let routes = []; let initialized = false;
+        let userMarker = null; let userCanvasPos = null; let lastUserPos = null;
 
         function initMap() {
             if (initialized) return; initialized = true;
@@ -132,42 +133,99 @@
             catch(e){ console.error('routes',e); }
         }
 
+        async function reverseGeocode(lat, lng){
+            // Prefer Google if available; otherwise fallback to OpenStreetMap Nominatim
+            try {
+                if (typeof google !== 'undefined' && google.maps && google.maps.Geocoder) {
+                    const geocoder = new google.maps.Geocoder();
+                    return await new Promise((resolve) => {
+                        geocoder.geocode({ location: { lat, lng } }, (results, status) => {
+                            if (status === 'OK' && results && results[0]) resolve(results[0].formatted_address);
+                            else resolve(`${lat.toFixed(4)}, ${lng.toFixed(4)}`);
+                        });
+                    });
+                }
+            } catch (_) {}
+            // OSM fallback
+            try {
+                const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`;
+                const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+                const data = await res.json();
+                return data.display_name || `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
+            } catch(_) { return `${lat.toFixed(4)}, ${lng.toFixed(4)}`; }
+        }
+
+        function setUserMarker(lat, lng, label){
+            lastUserPos = { lat, lng };
+            if (typeof google !== 'undefined' && map) {
+                if (!userMarker) {
+                    userMarker = new google.maps.Marker({
+                        position: {lat, lng}, map, title: 'You are here',
+                        icon: { url:'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(`
+                            <svg xmlns=\"http://www.w3.org/2000/svg\" width=\"36\" height=\"36\" viewBox=\"0 0 36 36\"><circle cx=\"18\" cy=\"18\" r=\"14\" fill=\"#27ae60\" stroke=\"#145a32\" stroke-width=\"2\"/><text x=\"18\" y=\"22\" text-anchor=\"middle\" fill=\"white\" font-family=\"Arial\" font-size=\"12\" font-weight=\"bold\">◎</text></svg>`), scaledSize: new google.maps.Size(36,36), anchor: new google.maps.Point(18,18) }
+                    });
+                } else { userMarker.setPosition({lat, lng}); }
+                map.setCenter({lat, lng});
+            } else if (ctx) {
+                userCanvasPos = {lat, lng};
+                updateSimpleMap([]); // redraw to include user marker on canvas
+            }
+            const nearDiv = document.getElementById('nearest-results');
+            if (label) nearDiv.innerHTML = `<div class='item'><div><strong>My Location</strong><br><span class='muted'>${label}</span></div><div><span class='status ok'>SET</span></div></div>`;
+        }
+
         async function useMyLocation(){
             if(!navigator.geolocation){ alert('Geolocation not supported'); return; }
             navigator.geolocation.getCurrentPosition(async (pos)=>{
                 const { latitude, longitude, accuracy } = pos.coords;
                 try { await fetchJSON('/api/update_user_location/', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ latitude, longitude, accuracy })});
-                    document.getElementById('nearest-results').innerHTML = `Your location set to: ${latitude.toFixed(4)}, ${longitude.toFixed(4)} (±${Math.round(accuracy)}m)`;
+                    const label = await reverseGeocode(latitude, longitude);
+                    setUserMarker(latitude, longitude, label);
                 } catch(e){ console.error(e); }
             }, (err)=>alert('Failed: '+err.message));
         }
 
         async function findNearest(){
             const radius = parseFloat(document.getElementById('radius-km').value||'5');
-            const pos = await new Promise(r=>navigator.geolocation.getCurrentPosition(p=>r(p), ()=>r(null)));
-            const lat = pos?pos.coords.latitude:28.6139; const lng = pos?pos.coords.longitude:77.2090;
+            let lat, lng;
+            if (lastUserPos) { lat = lastUserPos.lat; lng = lastUserPos.lng; }
+            else {
+                const pos = await new Promise(r=>navigator.geolocation.getCurrentPosition(p=>r(p), ()=>r(null)));
+                lat = pos?pos.coords.latitude:28.6139; lng = pos?pos.coords.longitude:77.2090;
+            }
             try{ const data = await fetchJSON(`/api/find_nearest_buses/?lat=${lat}&lng=${lng}&radius=${radius}`);
                 if(data.status==='success'){
-                    const html = (data.nearest_buses||[]).map(b=>`
+                    const mapped = (data.nearest_buses||[]).map(b=>({
+                        bus_id:b.bus_id, bus_number:b.bus_number, route_name:b.route_name, route_id:b.route_id,
+                        latitude:b.latitude, longitude:b.longitude, last_updated:b.last_updated||new Date().toISOString()
+                    }));
+                    const html = mapped.map(b=>`
                         <div class='item'>
                             <div><strong>${b.bus_number} (${b.bus_id})</strong><br><span class='muted'>Route: ${b.route_name||'N/A'}</span></div>
-                            <div><span class='status ok'>${b.distance_km} km</span></div>
+                            <div><span class='status ok'>${(data.search_radius_km||radius)} km</span></div>
                         </div>`).join('');
-                    document.getElementById('nearest-results').innerHTML = html || '<div class="muted">No vehicles nearby</div>';
+                    document.getElementById('nearest-results').innerHTML = html || '<div class=\"muted\">No vehicles nearby</div>';
+                    updateMap(mapped);
                 }
             }catch(e){ console.error(e); }
+        }
+
+        function toMapModels(arr){
+            return (arr||[]).map(b=>({
+                bus_id:b.bus_id, bus_number:b.bus_number, route_name:b.route_name, route_id:b.route_id,
+                latitude:(b.current_location && b.current_location.latitude)||b.latitude||28.6139,
+                longitude:(b.current_location && b.current_location.longitude)||b.longitude||77.2090,
+                last_updated:(b.current_location && b.current_location.last_updated)||b.last_updated||new Date().toISOString()
+            }));
         }
 
         async function searchBuses(){
             const q = encodeURIComponent(document.getElementById('search-query').value.trim());
             const data = await fetchJSON(`/api/search_buses/?q=${q}`);
             if(data.status==='success'){
-                updateBusList((data.buses||[]).map(b=>({
-                    bus_id:b.bus_id, bus_number:b.bus_number, route_name:b.route_name, route_id:b.route_id,
-                    latitude:(b.current_location && b.current_location.latitude)||28.6139,
-                    longitude:(b.current_location && b.current_location.longitude)||77.2090,
-                    last_updated:(b.current_location && b.current_location.last_updated)||new Date().toISOString()
-                })))
+                const models = toMapModels(data.buses);
+                updateBusList(models);
+                updateMap(models);
             }
         }
 
@@ -176,12 +234,9 @@
             if(!route){ fetchBusLocations(); return; }
             const data = await fetchJSON(`/api/search_buses/?route=${encodeURIComponent(route)}`);
             if(data.status==='success'){
-                updateBusList((data.buses||[]).map(b=>({
-                    bus_id:b.bus_id, bus_number:b.bus_number, route_name:b.route_name, route_id:b.route_id,
-                    latitude:(b.current_location && b.current_location.latitude)||28.6139,
-                    longitude:(b.current_location && b.current_location.longitude)||77.2090,
-                    last_updated:(b.current_location && b.current_location.last_updated)||new Date().toISOString()
-                })))
+                const models = toMapModels(data.buses);
+                updateBusList(models);
+                updateMap(models);
             }
         }
 
@@ -216,6 +271,38 @@
             else if(ctx){ updateSimpleMap(locations); }
         }
 
+        function formatAgo(iso){
+            try{ const d=new Date(iso); const s=Math.max(0, Math.floor((Date.now()-d.getTime())/1000)); if(s<60) return s+"s ago"; const m=Math.floor(s/60); if(m<60) return m+"m ago"; const h=Math.floor(m/60); return h+"h ago"; }catch(_){ return ''; }
+        }
+
+        function updateBusList(list){
+            const el = document.getElementById('bus-list');
+            const items = (list||[]);
+            if(items.length===0){ el.innerHTML = '<div class="muted">No live vehicles</div>'; return; }
+            el.innerHTML = items.map(b=>{
+                const lat = (b.current_location?b.current_location.latitude:b.latitude)||0;
+                const lng = (b.current_location?b.current_location.longitude:b.longitude)||0;
+                const last = (b.current_location?b.current_location.last_updated:b.last_updated)||'';
+                const route = b.route_name||b.route_id||'N/A';
+                const title = `${b.bus_number||b.bus_id} (${b.bus_id})`;
+                return `<div class='item'>
+                    <div>
+                        <strong>${title}</strong><br>
+                        <span class='muted'>Route: ${route} • ${lat.toFixed?lat.toFixed(4):lat}, ${lng.toFixed?lng.toFixed(4):lng}</span>
+                    </div>
+                    <div>
+                        <button class='secondary' onclick='focusBus(${lat}, ${lng})'>Focus</button>
+                        <div class='muted' style='text-align:right'>${formatAgo(last)}</div>
+                    </div>
+                </div>`;
+            }).join('');
+        }
+
+        function focusBus(lat, lng){
+            if(typeof google!=='undefined' && map){ map.setCenter({lat, lng}); map.setZoom(14); }
+            else { userCanvasPos = {lat, lng}; updateSimpleMap([]); }
+        }
+
         function updateGoogleMap(loc){
             const activeIds = loc.map(l=>l.bus_id);
             Object.keys(markers).forEach(id=>{ if(!activeIds.includes(id)){ markers[id].setMap(null); if(infoWindows[id]) infoWindows[id].close(); delete markers[id]; delete infoWindows[id]; }});
@@ -226,6 +313,8 @@
                 const iw = `<div style='padding:10px;'><h4 style='margin:0 0 8px 0;color:#2c3e50'>${l.bus_id}</h4><div class='muted'>${l.latitude.toFixed(4)}, ${l.longitude.toFixed(4)}</div><div class='muted'>${new Date(l.last_updated).toLocaleTimeString()}</div></div>`;
                 if(infoWindows[l.bus_id]) infoWindows[l.bus_id].setContent(iw); else { infoWindows[l.bus_id] = new google.maps.InfoWindow({ content: iw }); markers[l.bus_id].addListener('click', ()=>{ Object.values(infoWindows).forEach(x=>x.close()); infoWindows[l.bus_id].open(map, markers[l.bus_id]); }); }
             });
+            // Ensure user marker stays on top if present
+            if (userMarker) { userMarker.setMap(map); }
         }
 
         // Simple canvas map fallback
@@ -242,7 +331,9 @@
         function drawMapBackground(){ ctx.clearRect(0,0,ctx.canvas.width,ctx.canvas.height); ctx.fillStyle='#f0f8ff'; ctx.fillRect(0,0,ctx.canvas.width,ctx.canvas.height); ctx.strokeStyle='#e0e0e0'; for(let i=0;i<=10;i++){ const x=(ctx.canvas.width/10)*i; const y=(ctx.canvas.height/10)*i; ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,ctx.canvas.height); ctx.stroke(); ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(ctx.canvas.width,y); ctx.stroke(); } ctx.fillStyle='#2c3e50'; ctx.font='bold 18px Arial'; ctx.textAlign='center'; ctx.fillText('Delhi Area - Public Transport', ctx.canvas.width/2, 28); }
         function latLngToPixel(lat,lng){ const x=((lng-mapBounds.minLng)/(mapBounds.maxLng-mapBounds.minLng))*ctx.canvas.width; const y=((mapBounds.maxLat-lat)/(mapBounds.maxLat-mapBounds.minLat))*ctx.canvas.height; return {x,y}; }
         function drawBusMarker(l,c='#3498db'){ const p=latLngToPixel(l.latitude,l.longitude); ctx.beginPath(); ctx.arc(p.x,p.y,15,0,Math.PI*2); ctx.fillStyle=c; ctx.fill(); ctx.strokeStyle='#2c3e50'; ctx.lineWidth=2; ctx.stroke(); ctx.fillStyle='#fff'; ctx.font='12px Arial'; ctx.textAlign='center'; ctx.fillText('🚍',p.x,p.y+4); ctx.fillStyle='#2c3e50'; ctx.font='bold 11px Arial'; ctx.fillText(l.bus_number||l.bus_id,p.x,p.y-28); ctx.font='9px Arial'; ctx.fillStyle='#34495e'; ctx.fillText(`(${l.route_name||l.route_id||'Unknown'})`,p.x,p.y-16); }
-        function updateSimpleMap(loc){ drawMapBackground(); loc.forEach((l,i)=>{ const colors=['#3498db','#e74c3c','#2ecc71','#f39c12','#9b59b6']; drawBusMarker(l,colors[i%colors.length]); }); }
+        function updateSimpleMap(loc){ drawMapBackground(); loc.forEach((l,i)=>{ const colors=['#3498db','#e74c3c','#2ecc71','#f39c12','#9b59b6']; drawBusMarker(l,colors[i%colors.length]); }); if (userCanvasPos){ // draw user location
+                const p = latLngToPixel(userCanvasPos.lat, userCanvasPos.lng); ctx.beginPath(); ctx.arc(p.x,p.y,12,0,Math.PI*2); ctx.fillStyle='#27ae60'; ctx.fill(); ctx.strokeStyle='#145a32'; ctx.lineWidth=2; ctx.stroke(); ctx.fillStyle='#fff'; ctx.font='bold 11px Arial'; ctx.textAlign='center'; ctx.fillText('◎', p.x, p.y+4); }
+        }
 
         // Hook controls
         window.onload = function(){
@@ -250,6 +341,7 @@
             document.getElementById('btn-my-location').onclick = useMyLocation;
             document.getElementById('btn-nearest').onclick = findNearest;
             document.getElementById('btn-search').onclick = searchBuses;
+            document.getElementById('search-query').addEventListener('keydown', function(e){ if(e.key==='Enter'){ searchBuses(); }});
             document.getElementById('btn-apply-route').onclick = applyRouteFilter;
             document.getElementById('btn-delay').onclick = checkDelays;
             loadRoutes();
@@ -258,6 +350,7 @@
     </script>
 
     <!-- Google Maps: add your key below and it will auto-use Google Maps. If not provided, canvas map fallback is used. -->
+     
     <script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDnOhQzKOIz6i3t_a0oK6K2d7bQ7BG2SFU&callback=initMap"></script>
 </body>
 </html>

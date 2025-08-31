@@ -17,10 +17,12 @@ urlpatterns = [
     # Authentication APIs
     path('admin/login/', views.admin_authenticate, name='admin_authenticate'),
     path('admin/logout/', views.admin_logout_view, name='admin_logout'),
+    path('admin/signup/', views.admin_signup, name='admin_signup'),
     
     # Admin APIs
     path('admin/add_bus/', views.admin_add_bus, name='admin_add_bus'),
     path('admin/list_buses/', views.admin_list_buses, name='admin_list_buses'),
+    path('admin/analytics/', views.admin_analytics, name='admin_analytics'),
     
     # Web views
     path('dashboard/', views.home, name='dashboard'),
