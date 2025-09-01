@@ -2,73 +2,112 @@
 {% block title %}Home — Real-Time Public Transport Tracking{% endblock %}
 {% block head_extra %}
 <style>
- 
-  :root { --primary:#2c3e50; --accent:#3498db; --bg:#f5f5f5; }
-  .hero { min-height: calc(100vh - 68px); display: grid; place-items: center; padding: 40px 20px; position: relative; overflow: hidden; }
-  .card {  border-radius: 16px; padding: 40px 28px; max-width: 760px; width: 96%; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; }
-  h1 { margin: 0 0 10px 0; color: var(--primary); font-size: 28px; }
-  p.lead { margin: 0 0 20px 0; color: #4b5563; }
-  .features { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
-  .feature-pill { padding: 8px 14px; background: #ecf5ff; border: 1px solid #cfe8ff; color: #0f4871; border-radius: 999px; font-size: 12px; }
-  .cta { margin-top: 26px; }
-  {% comment %} .btn { background: var(--accent); color: #fff; border: none; padding: 12px 22px; border-radius: 8px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 10px rgba(52,152,219,0.25); } {% endcomment %}
-  .btn:hover { background: #2b7bb8; }
-  .sub { margin-top: 14px; font-size: 13px; color: #6b7280; }
-  .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
-  .bg-shape { position: absolute; width: 800px; height: 800px; background: radial-gradient(closest-side, rgba(4, 32, 50, 0.18), rgba(52, 152, 219, 0)); border-radius: 50%; top: -220px; right: -200px; filter: blur(2px); }
-  .bg-shape-2 { position: absolute; width: 700px; height: 700px; background: radial-gradient(closest-side, rgba(39,174,96,0.16), rgba(39, 174, 95, 0)); border-radius: 50%; bottom: -240px; left: -220px; filter: blur(2px); }
-  .get-started {
-      background: linear-gradient(135deg, #ffd700, #ff9900);
-      color: #000;
-      font-weight: bold;
-      padding: 0.7rem 1.5rem;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      font-size: 1rem;
-      transition: transform 0.2s;
-    }
-    .get-started:hover {
-      transform: scale(1.05);
-    }
-    section {
-      background: rgba(255, 255, 255, 0.15);
-      border-radius: 12px;
-      padding: 1.5rem;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-      backdrop-filter: blur(10px);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
+  /* Hero */
+  .hero { position: relative; min-height: calc(100vh - 60px); display:grid; place-items:center; overflow:hidden; }
+  .hero img.bg { position:absolute; inset:0; width:100%; height:100%; object-fit:cover; filter: brightness(0.45); }
+  .hero .content { position:relative; text-align:center; max-width: 900px; padding: 28px; }
+  .hero h1 { font-size: 42px; margin: 0 0 10px 0; }
+  .hero p { color: var(--muted); margin: 0 0 18px 0; }
+  .cta-row { display:flex; justify-content:center; gap:10px; }
+  .btn.big { padding: 14px 22px; font-size: 16px; border-radius: 12px; }
 
-    section:hover {
-      transform: translateY(-6px);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
-    }
+  /* 3D canvas band */
+  .orb-band { position: relative; height: 260px; display:grid; place-items:center; overflow:hidden; border-top:1px solid var(--border); border-bottom:1px solid var(--border); background: radial-gradient(closest-side, rgba(124,58,237,0.15), rgba(0,0,0,0)); }
+  #orbCanvas { width: 100%; height: 100%; display:block; }
+
+  /* Features */
+  .features-wrap { max-width: 1200px; margin: 26px auto; padding: 0 18px; }
+  .features-grid { display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 14px; }
+  .feature-card { background: var(--panel); border:1px solid var(--border); border-radius: 16px; padding: 16px; box-shadow: var(--shadow); }
+  .feature-card:hover { transform: none; }
+  .feature-card h3 { margin:0 0 6px 0; }
+  .feature-card p { color: var(--muted); }
+
+  /* FAQ */
+  .faq { max-width: 1000px; margin: 30px auto; padding: 0 18px; }
+  .faq details { background: var(--panel); border:1px solid var(--border); border-radius: 12px; padding: 12px 16px; margin: 8px 0; }
+  .faq summary { cursor: pointer; font-weight: 700; }
+  .footer { text-align: center; color: var(--muted); padding: 20px; border-top:1px solid var(--border); margin-top: 30px; }
+
+  @media (max-width: 980px){ .features-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+  @media (max-width: 640px){ .features-grid { grid-template-columns: 1fr; } .hero h1 { font-size: 32px; } }
 </style>
 {% endblock %}
 {% block content %}
-  <main class="hero">
-    <div class="bg-shape"></div>
-    <div class="bg-shape-2"></div>
-    <section class="card">
-      <h1>Track buses, metros, and public transport in real time</h1>
-      <p class="lead">Start by choosing whether you're a normal user or an admin. You can sign in or continue as guest for quick access.</p>
-      <div class="features">
-        <div class="feature-pill">Nearest Vehicles</div>
-        <div class="feature-pill">My Location</div>
-        <div class="feature-pill">Filter by Route</div>
-        <div class="feature-pill">ID Search</div>
-        <div class="feature-pill">Delay Check</div>
+  <section class="hero">
+    <img class="bg" src="https://images.unsplash.com/photo-1509228627152-72ae9ae6848d?auto=format&fit=crop&w=1600&q=80" alt="hero" />
+    <div class="content">
+      <h1>Real-time public transport, made simple</h1>
+      <p>Track buses, metros and more. Search by route or ID. See delays at a glance — in dark or light mode.</p>
+      <div class="cta-row">
+        <button class="btn big" onclick="location.href='/select/'">Get Started</button>
+        <a class="btn big" style="background:linear-gradient(135deg,var(--accent-2),#16a34a)" href="/user/">Try Demo</a>
       </div>
-      <div class="cta">
-        <button class="btn get-started" onclick="location.href='/select/'">Get Started</button>
-        <div class="sub">Transport & Logistics theme — Real-Time Public Transport Tracking.</div>
+    </div>
+  </section>
+
+  <div class="orb-band">
+    <canvas id="orbCanvas"></canvas>
+  </div>
+
+  <div class="features-wrap">
+    <div class="features-grid">
+      <div class="feature-card" data-tilt>
+        <h3>Nearest Vehicles</h3>
+        <p>Instantly find the closest options around you with live locations.</p>
       </div>
-    </section>
-  </main>
-  <div class="footer">© <span id="y"></span> Public Transport Tracker</div>
+      <div class="feature-card" data-tilt>
+        <h3>Powerful Search</h3>
+        <p>Search by vehicle ID, route, or type. Filter results in one click.</p>
+      </div>
+      <div class="feature-card" data-tilt>
+        <h3>Delay Insights</h3>
+        <p>Automatic delay checks flag anything offline or lagging updates.</p>
+      </div>
+      <div class="feature-card" data-tilt>
+        <h3>Admin Tools</h3>
+        <p>Manage vehicles and routes — analytics tailored per admin.</p>
+      </div>
+      <div class="feature-card" data-tilt>
+        <h3>Dark / Light</h3>
+        <p>Switch themes seamlessly. Your preference is remembered.</p>
+      </div>
+      <div class="feature-card" data-tilt>
+        <h3>Export & Share</h3>
+        <p>Export your lists to CSV and share snapshots with your team.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="faq">
+    <h2>FAQs</h2>
+    <details open>
+      <summary>Is my location required?</summary>
+      <p>It’s optional. Enabling it improves nearby results and map centering.</p>
+    </details>
+    <details>
+      <summary>Do I need an account?</summary>
+      <p>No for viewing; admins need a staff account to manage vehicles.</p>
+    </details>
+    <details>
+      <summary>Which cities are supported?</summary>
+      <p>The demo uses generic data. You can seed your own routes and vehicles.</p>
+    </details>
+  </div>
+
+  <div class="footer">© <span id="y"></span> DristiPath</div>
 {% endblock %}
 {% block scripts %}
-<script>document.getElementById('y').textContent = new Date().getFullYear();</script>
+<script>
+  document.getElementById('y').textContent = new Date().getFullYear();
+  // Subtle static gradient background for the orb band (no heavy animation)
+  (function(){
+    const el = document.getElementById('orbCanvas');
+    if(!el) return;
+    const ctx = el.getContext('2d');
+    function draw(){ const w=el.width=el.offsetWidth, h=el.height=el.offsetHeight; const g=ctx.createRadialGradient(w/2,h/2,10,w/2,h/2,Math.max(w,h)/2); g.addColorStop(0,'rgba(124,58,237,0.35)'); g.addColorStop(0.6,'rgba(34,197,94,0.18)'); g.addColorStop(1,'rgba(0,0,0,0)'); ctx.clearRect(0,0,w,h); ctx.fillStyle=g; ctx.fillRect(0,0,w,h); }
+    window.addEventListener('resize', draw); draw();
+  })();
+</script>
 {% endblock %}
 
