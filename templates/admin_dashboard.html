@@ -2,65 +2,186 @@
 {% block title %}Admin Panel — Public Transport{% endblock %}
 {% block head_extra %}
 <style>
-  body { background-color: #f5f5f5; }
-  .header { background-color: #2c3e50; color: white; padding: 16px; display:flex; align-items:center; justify-content:space-between; }
-  .layout { display:grid; grid-template-columns: 240px 1fr; gap: 16px; max-width: 1200px; margin: 0 auto; padding: 16px; }
-  .sidebar { background:#ffffff; border-radius:8px; box-shadow:0 2px 4px rgba(0,0,0,0.1); padding:12px; position:sticky; top:10px; height: fit-content; }
-  .sidebar h3 { margin:8px 0 12px 0; color:#2c3e50; }
-  .sidebar .btn { display:block; width:100%; text-align:left; margin:6px 0; padding:10px 12px; background:#3498db; color:#fff; border:none; border-radius:6px; cursor:pointer; }
-  .sidebar .btn.secondary { background:#27ae60; }
-  .sidebar .btn.warn { background:#e67e22; }
-  .sidebar .btn.purple { background:#8e44ad; }
-  .panel { background: white; margin: 0 0 16px 0; padding: 16px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-  .grid-cards { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
-  .stat { text-align:center; padding:16px; border-radius:8px; }
-  .bus-item { display:flex; justify-content:space-between; align-items:center; padding:12px; margin:8px 0; background:#ecf0f1; border-radius:5px; border-left:4px solid #3498db; }
+  /* Hide global site navbar for this full-bleed admin shell */
+  .navbar { display:none !important; }
+
+  /* Theme tokens */
+  :root{
+    --bg: #0b1020;
+    --panel: #0f1526;
+    --panel-2:#131b2e;
+    --card:#0d1426;
+    --text: #e5e7eb;
+    --muted:#9aa4b2;
+    --accent:#7c3aed; /* violet */
+    --accent-2:#22c55e; /* green */
+    --warning:#f59e0b;
+    --danger:#ef4444;
+    --border:#20293a;
+    --shadow: 0 8px 24px rgba(0,0,0,0.35);
+  }
+  [data-theme="light"]{
+    --bg:#f7f8fc;
+    --panel:#ffffff;
+    --panel-2:#ffffff;
+    --card:#ffffff;
+    --text:#0b1020;
+    --muted:#4b5563;
+    --accent:#7c3aed;
+    --accent-2:#16a34a;
+    --warning:#b45309;
+    --danger:#b91c1c;
+    --border:#e5e7eb;
+    --shadow: 0 8px 16px rgba(0,0,0,0.08);
+  }
+
+  html, body { height:100%; }
+  body { background: var(--bg); color: var(--text); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu; }
+
+  /* Shell layout: left nav + main */
+  .shell { display:grid; grid-template-columns: 260px 1fr; gap: 20px; padding: 18px; max-width: 1400px; margin: 0 auto; }
+  .sidebar { background: linear-gradient(180deg, var(--panel) 0%, var(--panel-2) 100%); border:1px solid var(--border); border-radius:16px; padding:14px; box-shadow: var(--shadow); position: sticky; top: 18px; height: calc(100vh - 36px); overflow: auto; }
+  .brand-row { display:flex; align-items:center; justify-content:space-between; padding:12px 10px; margin-bottom: 6px; }
+  .brand { display:flex; gap:10px; align-items:center; font-weight:700; letter-spacing:0.2px; }
+  .brand .dot { width:10px; height:10px; border-radius:50%; background: var(--accent); box-shadow:0 0 0 3px rgba(124,58,237,0.25); }
+  .mode-toggle { cursor:pointer; padding:6px 10px; border-radius:8px; background: rgba(124,58,237,0.15); border:1px solid var(--border); color: var(--text); font-size:12px; }
+  .navsec { margin-top: 12px; }
+  .navsec h4 { margin: 10px 8px; font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .nav { display:flex; flex-direction:column; gap:6px; }
+  .nav a, .nav button { text-align:left; padding:10px 12px; border-radius:10px; border:1px solid transparent; background: transparent; color: var(--text); text-decoration:none; font-size: 14px; cursor:pointer; }
+  .nav a:hover, .nav button:hover { background: rgba(124,58,237,0.08); border-color: var(--border); }
+  .nav .primary { background: rgba(124,58,237,0.16); border-color: rgba(124,58,237,0.35); }
+
+  /* Topbar inside content */
+  .topbar { display:flex; align-items:center; justify-content:space-between; padding: 14px 18px; background: var(--panel); border:1px solid var(--border); border-radius: 16px; box-shadow: var(--shadow); }
+  .search { display:flex; gap:8px; align-items:center; background: var(--card); border:1px solid var(--border); padding: 8px 10px; border-radius: 10px; }
+  .search input { background: transparent; border:none; outline:none; color: var(--text); width: 260px; }
+
+  main { display:flex; flex-direction:column; gap: 18px; }
+
+  /* Cards */
+  .cards { display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 14px; }
+  .card { background: var(--panel); border:1px solid var(--border); border-radius: 16px; padding: 16px; box-shadow: var(--shadow); }
+  .stat-title { color: var(--muted); font-size: 12px; margin:0; }
+  .stat-value { font-size: 24px; margin: 6px 0 0 0; }
+
+  .content-grid { display:grid; grid-template-columns: 1.4fr 1fr; gap: 18px; }
+
+  .panel { background: var(--panel); border:1px solid var(--border); border-radius:16px; padding:16px; box-shadow: var(--shadow); }
+  .panel h3 { margin: 0 0 10px 0; }
+
+  .bus-item { display:flex; justify-content:space-between; align-items:center; padding:12px; margin:8px 0; background: var(--card); border-radius:10px; border:1px solid var(--border); }
   .bus-details h4 { margin:0 0 5px 0; }
-  .bus-details p { margin:2px 0; font-size:14px; color:#666; }
-  .status { padding: 5px 15px; border-radius: 20px; font-size: 12px; font-weight: bold; }
-  .status.active { background: #2ecc71; color: white; }
-  .status.inactive { background: #e74c3c; color: white; }
-  .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
-  .modal-content { background-color: white; margin: 10% auto; padding: 20px; border-radius: 8px; width: 500px; max-width: 90%; }
-  .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
-  .close:hover { color: black; }
+  .bus-details p { margin:2px 0; font-size:13px; color: var(--muted); }
+  .status { padding: 6px 12px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+  .status.active { background: rgba(34,197,94,0.18); color: #22c55e; border:1px solid rgba(34,197,94,0.35); }
+  .status.inactive { background: rgba(239,68,68,0.18); color: #ef4444; border:1px solid rgba(239,68,68,0.35); }
+
+  /* Forms */
+  label { display:block; font-size:12px; color: var(--muted); margin-bottom:6px; }
+  input, select, button { padding:10px 12px; border-radius:10px; border:1px solid var(--border); background: var(--card); color: var(--text); }
+  button { background: linear-gradient(135deg, var(--accent), #4f46e5); border:none; color:#fff; cursor:pointer; }
+  button:hover { filter: brightness(1.05); }
+
+  /* Modal */
+  .modal { display: none; position: fixed; z-index: 1000; inset: 0; background-color: rgba(0,0,0,0.5); }
+  .modal-content { background: var(--panel); color: var(--text); margin: 10% auto; padding: 20px; border-radius: 12px; width: 520px; max-width: 92%; border:1px solid var(--border); }
+  .close { color: var(--muted); float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+  .close:hover { color: var(--text); }
+
+  /* Pie chart card */
+  .donut-legend { display:flex; gap:10px; flex-wrap:wrap; margin-top:8px; }
+  .kpi { display:flex; align-items:center; gap: 8px; color: var(--muted); }
+  .kpi .dot { width:10px; height:10px; border-radius:999px; }
+
+  /* Responsive */
+  @media (max-width: 1100px) {
+    .shell { grid-template-columns: 1fr; }
+    .sidebar { height: auto; position: static; }
+    .content-grid { grid-template-columns: 1fr; }
+    .cards { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  }
 </style>
 {% endblock %}
 {% block content %}
-  <div class="header">
-    <h1>🛠️ Public Transport — Admin Dashboard</h1>
-    <div class="nav-links">
-      <a class="nav-link" href="/">Main</a>
-      <a class="nav-link" href="/admin/">Django Admin</a>
-    </div>
-  </div>
-  <div class="layout">
+  <div class="shell" id="admin-shell">
     <aside class="sidebar">
-      <h3>Actions</h3>
-      <button class="btn" onclick="loadStats()">Update Stats</button>
-      <button class="btn" onclick="loadBuses()">Refresh Vehicles</button>
-      <button class="btn" onclick="loadRoutes()">Refresh Routes</button>
-      <button class="btn purple" onclick="openModal()">Add Route</button>
-      <button class="btn secondary" onclick="document.getElementById('add-bus-form').scrollIntoView({behavior:'smooth'})">Add Vehicle</button>
-      <button class="btn warn" onclick="clearOldLocations()">Clean Old Data</button>
-      <button class="btn" onclick="exportData()">Export Data</button>
-      <div style="margin-top:12px;">
-        <input type="text" id="search-buses" placeholder="Search vehicles..." style="width:100%; padding:8px; border:1px solid #ddd; border-radius:6px;">
-        <button class="btn" style="margin-top:8px;" onclick="searchBuses()">Search</button>
+      <div class="brand-row">
+        <div class="brand"><span class="dot"></span> <span>Path Wounded</span></div>
+        <button id="modeToggle" class="mode-toggle" title="Toggle theme">Dark</button>
       </div>
-    </aside>
-    <main>
-      <div class="panel">
-        <h3>Quick Stats</h3>
-        <div class="grid-cards">
-          <div class="stat" style="background:#e8f5e8;"><h2 id="total-buses" style="margin:0; color:#27ae60;">-</h2><p>Total Vehicles</p></div>
-          <div class="stat" style="background:#e8f4fd;"><h2 id="active-buses" style="margin:0; color:#3498db;">-</h2><p>Active Vehicles</p></div>
-          <div class="stat" style="background:#fff3cd;"><h2 id="total-routes" style="margin:0; color:#f39c12;">-</h2><p>Routes</p></div>
-          <div class="stat" style="background:#fdeeee;"><h2 id="updates-1h" style="margin:0; color:#c0392b;">-</h2><p>Updates (1h)</p></div>
-          <div class="stat" style="background:#eef9ff;"><h2 id="updates-24h" style="margin:0; color:#2980b9;">-</h2><p>Updates (24h)</p></div>
-          <div class="stat" style="background:#eafaf1;"><h2 id="active-recent" style="margin:0; color:#27ae60;">-</h2><p>Active Recently (3m)</p></div>
+      <div class="navsec">
+        <h4>Menu</h4>
+        <div class="nav">
+          <a class="primary" href="#">Overview</a>
+          <button onclick="document.getElementById('add-bus-form').scrollIntoView({behavior:'smooth'})">Add Vehicle</button>
+          <button onclick="openModal()">Add Route</button>
+          <button onclick="loadStats()">Update Stats</button>
+          <button onclick="loadBuses()">Refresh Vehicles</button>
+          <button onclick="loadRoutes()">Refresh Routes</button>
+          <button onclick="clearOldLocations()">Clean Old Data</button>
+          <button onclick="exportData()">Export CSV</button>
         </div>
       </div>
+      <div class="navsec">
+        <h4>Search</h4>
+        <div class="search" style="margin: 0 6px 10px 6px;">
+          <svg width="16" height="16" fill="currentColor" style="color:var(--muted)"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398l3.85 3.85a1 1 0 0 0 1.415-1.415l-3.868-3.833zM6.5 11A4.5 4.5 0 1 1 11 6.5 4.5 4.5 0 0 1 6.5 11z"/></svg>
+          <input id="search-buses" placeholder="Search vehicles..." />
+        </div>
+        <button class="mode-toggle" style="width:calc(100% - 12px); margin: 0 6px;" onclick="searchBuses()">Search</button>
+      </div>
+    </aside>
+
+    <main>
+      <div class="topbar">
+        <div style="display:flex; align-items:center; gap: 10px;">
+          <div style="font-weight:700; font-size:16px;">Overview</div>
+          <div class="kpi"><span class="dot" style="background:var(--accent)"></span> Live</div>
+        </div>
+        <div class="search">
+          <svg width="16" height="16" fill="currentColor" style="color:var(--muted)"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398l3.85 3.85a1 1 0 0 0 1.415-1.415l-3.868-3.833zM6.5 11A4.5 4.5 0 1 1 11 6.5 4.5 4.5 0 0 1 6.5 11z"/></svg>
+          <input placeholder="Quick search" />
+        </div>
+      </div>
+
+      <section class="cards">
+        <div class="card"><p class="stat-title">Total Vehicles</p><div class="stat-value" id="total-buses">-</div></div>
+        <div class="card"><p class="stat-title">Active Vehicles</p><div class="stat-value" id="active-buses">-</div></div>
+        <div class="card"><p class="stat-title">Routes</p><div class="stat-value" id="total-routes">-</div></div>
+        <div class="card"><p class="stat-title">Updates (24h)</p><div class="stat-value" id="updates-24h">-</div></div>
+      </section>
+
+      <section class="content-grid">
+        <div class="panel">
+          <h3>Vehicle Management</h3>
+          <div id="buses-list">
+            <div style="text-align:center; padding: 20px; color: var(--muted);">Loading vehicles...</div>
+          </div>
+        </div>
+        <div class="panel">
+          <h3>Top Carriers</h3>
+          <div style="display:flex; align-items:center; gap: 14px;">
+            <div style="width: 200px; height: 200px;">
+              <canvas id="vehiclePie" width="200" height="200"></canvas>
+            </div>
+            <div>
+              <div class="kpi"><span class="dot" style="background:#22c55e"></span> Bus</div>
+              <div class="kpi"><span class="dot" style="background:#38bdf8"></span> Metro</div>
+              <div class="kpi"><span class="dot" style="background:#f472b6"></span> Tram</div>
+              <div class="kpi"><span class="dot" style="background:#f59e0b"></span> Train</div>
+              <div class="kpi"><span class="dot" style="background:#a3e635"></span> Ferry</div>
+              <div style="margin-top:10px; color:var(--muted); font-size:12px;">Per-admin distribution</div>
+            </div>
+          </div>
+          <div class="donut-legend" id="vehicleLegend"></div>
+          <div style="margin-top:10px; display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:8px;">
+            <div class="card" style="padding:10px;"><p class="stat-title">Updates (1h)</p><div class="stat-value" id="updates-1h">-</div></div>
+            <div class="card" style="padding:10px;"><p class="stat-title">Active (3m)</p><div class="stat-value" id="active-recent">-</div></div>
+            <div class="card" style="padding:10px;"><p class="stat-title">Locations</p><div class="stat-value" id="total-locs">-</div></div>
+          </div>
+        </div>
+      </section>
 
       <div class="panel">
         <h3>Analytics</h3>
@@ -117,12 +238,6 @@
         </form>
       </div>
 
-      <div class="panel">
-        <h3>Vehicle Management</h3>
-        <div id="buses-list">
-          <div style="text-align: center; padding: 20px; color: #666;">Loading vehicles...</div>
-        </div>
-      </div>
     </main>
   </div>
 
@@ -157,9 +272,19 @@
   </div>
 {% endblock %}
 {% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 <script>
   let buses = [];
   let routes = [];
+  let vehiclePieChart = null;
+
+  // Theme persistence
+  const shell = document.getElementById('admin-shell');
+  const modeBtn = document.getElementById('modeToggle');
+  const applyTheme = (t)=>{ document.body.setAttribute('data-theme', t); modeBtn && (modeBtn.textContent = t==='dark' ? 'Dark' : 'Light'); localStorage.setItem('admin-theme', t); };
+  const savedTheme = localStorage.getItem('admin-theme') || 'dark';
+  applyTheme(savedTheme);
+  if(modeBtn){ modeBtn.onclick = ()=> applyTheme(document.body.getAttribute('data-theme')==='dark' ? 'light' : 'dark'); }
 
   async function fetchJSON(url, options = {}) { const res = await fetch(url, options); return res.json(); }
   function showNotification(message) { alert(message); }
@@ -176,33 +301,35 @@
     try {
       const [busesData, routesData, analyticsData] = await Promise.all([
         fetchJSON('/api/admin/list_buses/'),
-        fetchJSON('/api/routes/'),
+        fetchJSON('/api/admin/list_routes/'),
         fetchJSON('/api/admin/analytics/')
       ]);
       if (busesData.status === 'success') {
-        const total = busesData.buses.length;
+        const total = busesData.count ?? busesData.buses.length;
         const active = busesData.buses.filter(b => b.is_active).length;
         document.getElementById('total-buses').textContent = total;
         document.getElementById('active-buses').textContent = active;
       }
       if (routesData.status === 'success') {
-        document.getElementById('total-routes').textContent = routesData.routes.length;
+        document.getElementById('total-routes').textContent = routesData.count ?? routesData.routes.length;
       }
       if (analyticsData.status === 'success') {
         const s = analyticsData.summary;
         document.getElementById('updates-1h').textContent = s.updates_last_hour;
         document.getElementById('updates-24h').textContent = s.updates_last_24h;
         document.getElementById('active-recent').textContent = s.active_recent;
+        document.getElementById('total-locs').textContent = s.total_locations;
         renderRouteBreakdown(analyticsData.routes);
         renderRecentActivity(analyticsData.recent_activity);
+        updateVehiclePie(analyticsData.vehicle_type_counts);
       }
     } catch (error) {
       console.error('Error loading stats:', error);
     }
   }
 
-  function renderRouteBreakdown(items){ const el = document.getElementById('route-breakdown'); if(!items || items.length===0){ el.innerHTML = '<div style="color:#666">No route data</div>'; return; } el.innerHTML = items.map(r=>`<div class=\"bus-item\"><div class=\"bus-details\"><h4>${r.name} (${r.route_id})</h4><p><strong>Vehicles:</strong> ${r.buses}</p></div><div><div class=\"status ${r.active_recent>0?'active':'inactive'}\">${r.active_recent} active</div></div></div>`).join(''); }
-  function renderRecentActivity(items){ const el = document.getElementById('recent-activity'); if(!items || items.length===0){ el.innerHTML = '<div style="color:#666">No recent activity</div>'; return; } el.innerHTML = items.map(a=>`<div class=\"bus-item\"><div class=\"bus-details\"><h4>${a.bus_number} (${a.bus_id})</h4><p><strong>Route:</strong> ${a.route_id||'N/A'} | <strong>Coords:</strong> ${a.latitude.toFixed(4)}, ${a.longitude.toFixed(4)}</p></div><div><div class=\"status active\">${new Date(a.last_updated).toLocaleTimeString()}</div></div></div>`).join(''); }
+  function renderRouteBreakdown(items){ const el = document.getElementById('route-breakdown'); if(!items || items.length===0){ el.innerHTML = '<div style="color:var(--muted)">No route data</div>'; return; } el.innerHTML = items.map(r=>`<div class=\"bus-item\"><div class=\"bus-details\"><h4>${r.name} (${r.route_id})</h4><p><strong>Vehicles:</strong> ${r.buses}</p></div><div><div class=\"status ${r.active_recent>0?'active':'inactive'}\">${r.active_recent} active</div></div></div>`).join(''); }
+  function renderRecentActivity(items){ const el = document.getElementById('recent-activity'); if(!items || items.length===0){ el.innerHTML = '<div style="color:var(--muted)">No recent activity</div>'; return; } el.innerHTML = items.map(a=>`<div class=\"bus-item\"><div class=\"bus-details\"><h4>${a.bus_number} (${a.bus_id})</h4><p><strong>Route:</strong> ${a.route_id||'N/A'} | <strong>Coords:</strong> ${Number(a.latitude).toFixed(4)}, ${Number(a.longitude).toFixed(4)}</p></div><div><div class=\"status active\">${new Date(a.last_updated).toLocaleTimeString()}</div></div></div>`).join(''); }
 
   async function loadBuses() {
     try {
@@ -210,7 +337,7 @@
       if (data.status === 'success') { buses = data.buses; displayBuses(buses); }
     } catch (error) {
       console.error('Error loading vehicles:', error);
-      document.getElementById('buses-list').innerHTML = '<div style="text-align: center; padding: 20px; color: #e74c3c;">Error loading vehicles</div>';
+      document.getElementById('buses-list').innerHTML = '<div style="text-align: center; padding: 20px; color: var(--danger);">Error loading vehicles</div>';
     }
   }
 
@@ -220,7 +347,31 @@
 
   function updateRouteSelect(){ const select = document.getElementById('route-select'); select.innerHTML = '<option value="">Select a route</option>'; routes.forEach(route => { const option = document.createElement('option'); option.value = route.route_id; option.textContent = `${route.route_id} - ${route.name}`; select.appendChild(option); }); }
 
-  function displayBuses(list){ const container = document.getElementById('buses-list'); if (list.length === 0) { container.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">No vehicles found</div>'; return; } const html = list.map(bus => `<div class=\"bus-item\"><div class=\"bus-details\"><h4>${bus.bus_number} (${bus.bus_id})</h4><p><strong>Type:</strong> ${bus.vehicle_type}</p><p><strong>Route:</strong> ${bus.route_name || 'N/A'}</p><p><strong>Driver:</strong> ${bus.driver_name || 'N/A'}</p><p><strong>Capacity:</strong> ${bus.capacity} passengers</p>${bus.current_location ? `<p><strong>Location:</strong> ${bus.current_location.latitude.toFixed(4)}, ${bus.current_location.longitude.toFixed(4)}</p><p><strong>Last Update:</strong> ${new Date(bus.current_location.last_updated).toLocaleString()}</p>` : '<p><strong>Location:</strong> No recent data</p>'}</div><div><div class=\"status ${bus.is_active ? 'active' : 'inactive'}\">${bus.is_active ? 'ACTIVE' : 'INACTIVE'}</div><button onclick=\"toggleBusStatus('${bus.bus_id}', ${bus.is_active})\" style=\"margin-top: 10px; font-size: 12px; padding: 5px 10px;\">${bus.is_active ? 'Deactivate' : 'Activate'}</button></div></div>`).join(''); container.innerHTML = html; }
+  function displayBuses(list){ const container = document.getElementById('buses-list'); if (list.length === 0) { container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--muted);">No vehicles found</div>'; return; } const html = list.map(bus => `<div class=\"bus-item\"><div class=\"bus-details\"><h4>${bus.bus_number} (${bus.bus_id})</h4><p><strong>Type:</strong> ${bus.vehicle_type}</p><p><strong>Route:</strong> ${bus.route_name || 'N/A'}</p><p><strong>Driver:</strong> ${bus.driver_name || 'N/A'}</p><p><strong>Capacity:</strong> ${bus.capacity} passengers</p>${bus.current_location ? `<p><strong>Location:</strong> ${Number(bus.current_location.latitude).toFixed(4)}, ${Number(bus.current_location.longitude).toFixed(4)}</p><p><strong>Last Update:</strong> ${new Date(bus.current_location.last_updated).toLocaleString()}</p>` : '<p><strong>Location:</strong> No recent data</p>'}</div><div><div class=\"status ${bus.is_active ? 'active' : 'inactive'}\">${bus.is_active ? 'ACTIVE' : 'INACTIVE'}</div><button onclick=\"toggleBusStatus('${bus.bus_id}', ${bus.is_active})\" style=\"margin-top: 10px; font-size: 12px; padding: 5px 10px;\">${bus.is_active ? 'Deactivate' : 'Activate'}</button></div></div>`).join(''); container.innerHTML = html; }
+
+  function updateVehiclePie(counts){
+    if(!counts) return;
+    const labels = ['bus','metro','tram','train','ferry'];
+    const data = labels.map(k => counts[k] || 0);
+    const colors = ['#22c55e','#38bdf8','#f472b6','#f59e0b','#a3e635'];
+    const ctx = document.getElementById('vehiclePie');
+    if(!ctx) return;
+    if(vehiclePieChart){ vehiclePieChart.data.datasets[0].data = data; vehiclePieChart.update(); }
+    else {
+      vehiclePieChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: { labels, datasets: [{ data, backgroundColor: colors, borderWidth: 0 }] },
+        options: {
+          cutout: '60%',
+          plugins: { legend: { display:false } },
+          responsive: true,
+        }
+      });
+    }
+    // Legend text
+    const legend = document.getElementById('vehicleLegend');
+    if(legend){ legend.innerHTML = labels.map((l, i)=>`<div class=\"kpi\"><span class=\"dot\" style=\"background:${colors[i]}\"></span>${l.toUpperCase()}: ${data[i]}</div>`).join(''); }
+  }
 
   async function addBus(event) {
     event.preventDefault();
@@ -245,4 +396,3 @@
   function exportData(){ if (buses.length === 0) { showNotification('No data to export'); return; } const csv = [ ['Vehicle ID', 'Vehicle Number', 'Type', 'Route', 'Driver', 'Capacity', 'Status', 'Last Latitude', 'Last Longitude', 'Last Update'].join(','), ...buses.map(bus => [ bus.bus_id, bus.bus_number, bus.vehicle_type, bus.route_name || '', bus.driver_name || '', bus.capacity, bus.is_active ? 'Active' : 'Inactive', bus.current_location ? bus.current_location.latitude : '', bus.current_location ? bus.current_location.longitude : '', bus.current_location ? bus.current_location.last_updated : '' ].join(',')) ].join('\n'); const blob = new Blob([csv], { type: 'text/csv' }); const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `vehicles_${new Date().toISOString().split('T')[0]}.csv`; a.click(); window.URL.revokeObjectURL(url); }
 </script>
 {% endblock %}
-

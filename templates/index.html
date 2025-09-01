@@ -2,20 +2,48 @@
 {% block title %}Home — Real-Time Public Transport Tracking{% endblock %}
 {% block head_extra %}
 <style>
+ 
   :root { --primary:#2c3e50; --accent:#3498db; --bg:#f5f5f5; }
   .hero { min-height: calc(100vh - 68px); display: grid; place-items: center; padding: 40px 20px; position: relative; overflow: hidden; }
-  .card { background: #ffffff; border-radius: 16px; padding: 40px 28px; max-width: 760px; width: 96%; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; }
+  .card {  border-radius: 16px; padding: 40px 28px; max-width: 760px; width: 96%; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; }
   h1 { margin: 0 0 10px 0; color: var(--primary); font-size: 28px; }
   p.lead { margin: 0 0 20px 0; color: #4b5563; }
   .features { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
   .feature-pill { padding: 8px 14px; background: #ecf5ff; border: 1px solid #cfe8ff; color: #0f4871; border-radius: 999px; font-size: 12px; }
   .cta { margin-top: 26px; }
-  .btn { background: var(--accent); color: #fff; border: none; padding: 12px 22px; border-radius: 8px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 10px rgba(52,152,219,0.25); }
+  {% comment %} .btn { background: var(--accent); color: #fff; border: none; padding: 12px 22px; border-radius: 8px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 10px rgba(52,152,219,0.25); } {% endcomment %}
   .btn:hover { background: #2b7bb8; }
   .sub { margin-top: 14px; font-size: 13px; color: #6b7280; }
   .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
-  .bg-shape { position: absolute; width: 800px; height: 800px; background: radial-gradient(closest-side, rgba(52,152,219,0.18), rgba(52,152,219,0)); border-radius: 50%; top: -220px; right: -200px; filter: blur(2px); }
-  .bg-shape-2 { position: absolute; width: 700px; height: 700px; background: radial-gradient(closest-side, rgba(39,174,96,0.16), rgba(39,174,96,0)); border-radius: 50%; bottom: -240px; left: -220px; filter: blur(2px); }
+  .bg-shape { position: absolute; width: 800px; height: 800px; background: radial-gradient(closest-side, rgba(4, 32, 50, 0.18), rgba(52, 152, 219, 0)); border-radius: 50%; top: -220px; right: -200px; filter: blur(2px); }
+  .bg-shape-2 { position: absolute; width: 700px; height: 700px; background: radial-gradient(closest-side, rgba(39,174,96,0.16), rgba(39, 174, 95, 0)); border-radius: 50%; bottom: -240px; left: -220px; filter: blur(2px); }
+  .get-started {
+      background: linear-gradient(135deg, #ffd700, #ff9900);
+      color: #000;
+      font-weight: bold;
+      padding: 0.7rem 1.5rem;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: transform 0.2s;
+    }
+    .get-started:hover {
+      transform: scale(1.05);
+    }
+    section {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+      backdrop-filter: blur(10px);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    section:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    }
 </style>
 {% endblock %}
 {% block content %}
@@ -33,7 +61,7 @@
         <div class="feature-pill">Delay Check</div>
       </div>
       <div class="cta">
-        <button class="btn" onclick="location.href='/select/'">Get Started</button>
+        <button class="btn get-started" onclick="location.href='/select/'">Get Started</button>
         <div class="sub">Transport & Logistics theme — Real-Time Public Transport Tracking.</div>
       </div>
     </section>

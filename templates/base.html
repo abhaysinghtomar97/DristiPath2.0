@@ -5,11 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}Real-Time Public Transport Tracking{% endblock %}</title>
   <style>
+    body{
+     background: url("https://images.unsplash.com/photo-1509228627152-72ae9ae6848d?auto=format&fit=crop&w=1600&q=80") no-repeat center center/cover;
+      color: #612a2a;
+      line-height: 1.6;
+      position: relative;
+      min-height: 100vh;
+    }
     :root { --primary:#2c3e50; --accent:#3498db; --bg:#f5f7fb; }
     *{ box-sizing:border-box; }
     body { margin:0; font-family: Arial, sans-serif; background: var(--bg); color:#111; }
-    .navbar { background:var(--primary); color:#fff; padding:14px 18px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 6px rgba(0,0,0,0.12); }
-    .brand { font-weight:700; }
+    .navbar { background:var(--primary); color:#fff; padding:20px 18px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 2px 6px rgba(0,0,0,0.12); }
+    .brand { font-weight:700; font-family:__Noto_Sans_455659, __Noto_Sans_Fallback_455659, sans-serif; font-weight:400px; font-size:16px ; line-height:26px;}
     .nav-links { display:flex; gap:10px; align-items:center; }
     .nav-link { color:#fff; text-decoration:none; padding:6px 10px; border-radius:6px; background: rgba(255,255,255,0.12); }
     .nav-link:hover { background: rgba(255,255,255,0.2); }
@@ -19,7 +26,7 @@
 </head>
 <body>
   <div class="navbar">
-    <div class="brand">🚦 Transport & Logistics — Real-Time Public Transport Tracking</div>
+    <div class="brand">DristiPath</div>
     <div class="nav-links">
       <a class="nav-link" href="/">Home</a>
       <a class="nav-link" href="/select/">Select</a>
@@ -28,7 +35,7 @@
     </div>
   </div>
 
-  {% block content %}{% endblock %}
+  {% block content %} {% endblock %}
 
   {% block scripts %}{% endblock %}
 </body>
