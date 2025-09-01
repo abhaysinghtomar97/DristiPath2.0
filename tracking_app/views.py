@@ -588,10 +588,13 @@ def admin_list_routes(request):
 @require_http_methods(["GET"])
 @login_required
 def admin_analytics(request):
-    """Return analytics data for admin dashboard, scoped to current admin."""
+    """Return analytics data for admin dashboard, scoped to current admin.
+    Includes vehicle type distribution for per-admin isolated charts.
+    """
     if not request.user.is_staff:
         return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
     try:
+        from django.db.models import Count
         now = timezone.now()
         one_hour_ago = now - timedelta(hours=1)
         one_day_ago = now - timedelta(days=1)
@@ -609,12 +612,32 @@ def admin_analytics(request):
         recent_bus_ids = BusLocation.objects.filter(bus__owner=request.user, last_updated__gte=three_min_ago).values_list('bus_id', flat=True).distinct()
         active_recent = Bus.objects.filter(owner=request.user, id__in=recent_bus_ids).count()
         
+        # Vehicle type distribution (per-admin)
+        type_counts_qs = (
+            Bus.objects.filter(owner=request.user)
+            .values('vehicle_type')
+            .annotate(count=Count('id'))
+        )
+        # Ensure all types appear with zeros if missing
+        allowed_types = [t for t, _ in Bus.VEHICLE_TYPES]
+        vehicle_type_counts = {t: 0 for t in allowed_types}
+        for row in type_counts_qs:
+            vehicle_type_counts[row['vehicle_type']] = row['count']
+        status_counts = {
+            'active': active_buses,
+            'inactive': total_buses - active_buses,
+        }
+        
         # Per-route stats
         route_stats = []
         for route in Route.objects.filter(owner=request.user):
             buses_qs = route.buses.all()
             bus_ids = list(buses_qs.values_list('id', flat=True))
-            recent_count = BusLocation.objects.filter(bus_id__in=bus_ids, last_updated__gte=three_min_ago).values('bus_id').distinct().count()
+            recent_count = (
+                BusLocation.objects
+                .filter(bus_id__in=bus_ids, last_updated__gte=three_min_ago)
+                .values('bus_id').distinct().count()
+            )
             route_stats.append({
                 'route_id': route.route_id,
                 'name': route.name,
@@ -623,7 +646,11 @@ def admin_analytics(request):
             })
         
         # Recent activity entries
-        recent_locations = BusLocation.objects.select_related('bus').filter(bus__owner=request.user).order_by('-last_updated')[:20]
+        recent_locations = (
+            BusLocation.objects.select_related('bus')
+            .filter(bus__owner=request.user)
+            .order_by('-last_updated')[:20]
+        )
         recent_activity = [{
             'bus_id': bl.bus.bus_id,
             'bus_number': bl.bus.bus_number,
@@ -646,6 +673,8 @@ def admin_analytics(request):
                 'updates_last_24h': loc_last_day,
                 'active_recent': active_recent,
             },
+            'vehicle_type_counts': vehicle_type_counts,
+            'status_counts': status_counts,
             'routes': route_stats,
             'recent_activity': recent_activity,
             'generated_at': now.isoformat(),
