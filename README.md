@@ -95,8 +95,8 @@ bus_tracking_project/
 
 8. **Access the application**
    - Main Interface: http://localhost:8000/
-   - Admin Dashboard: http://localhost:8000/admin_panel/
-   - Django Admin: http://localhost:8000/admin/ (admin/admin123)
+   - Admin Dashboard: ...
+   - Django Admin: ...
 
 ## 📱 Usage
 
