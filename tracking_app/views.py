@@ -477,6 +477,111 @@ def admin_logout_view(request):
     logout(request)
     return JsonResponse({'status': 'success', 'message': 'Logged out successfully'})
 
+# ============= User Authentication Views =============
+
+@require_http_methods(["GET"])
+def get_csrf_token(request):
+    """Get CSRF token for authentication forms"""
+    from django.middleware.csrf import get_token
+    return JsonResponse({
+        'csrf_token': get_token(request)
+    })
+
+@csrf_exempt  
+@require_http_methods(["POST"])
+def user_authenticate(request):
+    """User authentication endpoint"""
+    try:
+        data = json.loads(request.body)
+        username = data.get('username')
+        password = data.get('password')
+        
+        if not username or not password:
+            return JsonResponse({'error': 'Username and password are required'}, status=400)
+        
+        user = authenticate(username=username, password=password)
+        if user is not None:
+            login(request, user)
+            return JsonResponse({
+                'status': 'success',
+                'message': 'Authentication successful',
+                'redirect_url': '/user/',
+                'user': {
+                    'username': user.username,
+                    'email': user.email,
+                    'first_name': user.first_name,
+                    'last_name': user.last_name
+                }
+            })
+        else:
+            return JsonResponse({'error': 'Invalid credentials'}, status=401)
+            
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def user_signup(request):
+    """Create a new regular user account"""
+    try:
+        data = json.loads(request.body)
+        username = data.get('username', '').strip()
+        password = data.get('password', '')
+        email = data.get('email', '').strip()
+        full_name = data.get('full_name', '').strip()
+        
+        if not username or not password:
+            return JsonResponse({'error': 'Username and password are required'}, status=400)
+        
+        # Basic password policy
+        if len(password) < 6:
+            return JsonResponse({'error': 'Password must be at least 6 characters long'}, status=400)
+        
+        # Ensure username unique
+        if User.objects.filter(username=username).exists():
+            return JsonResponse({'error': 'Username already exists'}, status=400)
+        
+        # Validate email if provided
+        if email and User.objects.filter(email=email).exists():
+            return JsonResponse({'error': 'Email already exists'}, status=400)
+        
+        # Create regular user (not staff)
+        user = User.objects.create_user(username=username, email=email or None, password=password)
+        if full_name:
+            # Split full name into first/last if possible
+            parts = full_name.split()
+            user.first_name = parts[0]
+            if len(parts) > 1:
+                user.last_name = ' '.join(parts[1:])
+            user.save()
+        
+        # Automatically login the user after signup
+        login(request, user)
+        
+        return JsonResponse({
+            'status': 'success', 
+            'message': 'Account created successfully', 
+            'redirect_url': '/user/',
+            'user': {
+                'username': user.username,
+                'email': user.email,
+                'first_name': user.first_name,
+                'last_name': user.last_name
+            }
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+def user_logout_view(request):
+    """User logout endpoint"""
+    logout(request)
+    return JsonResponse({'status': 'success', 'message': 'Logged out successfully'})
+
 # ============= Admin Management Endpoints =============
 
 @csrf_exempt
