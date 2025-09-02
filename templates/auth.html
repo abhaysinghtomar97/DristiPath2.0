@@ -946,46 +946,56 @@
     }
   }
 
-  function handleUserLogin(username, password) {
+  async function handleUserLogin(username, password) {
     try {
-      const users = getUsers();
+      const response = await fetch('/api/user/login/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, password })
+      });
       
-      if (!users[username] || users[username].password !== password) {
-        showError('Invalid username or password');
-        setLoadingState(false);
-        return;
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        showSuccess('Login successful! Redirecting...');
+        setTimeout(() => {
+          window.location.href = data.redirect_url || '/user/';
+        }, 1500);
+      } else {
+        showError(data.error || 'Invalid credentials');
       }
-      
-      showSuccess('Login successful! Redirecting...');
-      setTimeout(() => {
-        window.location.href = '/user/';
-      }, 1500);
     } catch (error) {
-      showError('An error occurred. Please try again.');
+      showError('Network error. Please try again.');
+    } finally {
       setLoadingState(false);
     }
   }
 
-  function handleUserSignup(name, username, email, password) {
+  async function handleUserSignup(name, username, email, password) {
     try {
-      const users = getUsers();
+      const response = await fetch('/api/user/signup/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          full_name: name, 
+          username, 
+          email, 
+          password 
+        })
+      });
       
-      if (users[username]) {
-        showError('Username already exists. Please choose a different one.');
-        setLoadingState(false);
-        return;
+      const data = await response.json();
+      
+      if (data.status === 'success') {
+        showSuccess('Account created successfully! Redirecting...');
+        setTimeout(() => {
+          window.location.href = data.redirect_url || '/user/';
+        }, 1500);
+      } else {
+        showError(data.error || 'Registration failed');
       }
-      
-      users[username] = { name, email, password };
-      setUsers(users);
-      
-      showSuccess('Account created successfully! You can now sign in.');
-      setTimeout(() => {
-        switchTab('login');
-        document.getElementById('login-username').value = username;
-      }, 2000);
     } catch (error) {
-      showError('An error occurred. Please try again.');
+      showError('Network error. Please try again.');
     } finally {
       setLoadingState(false);
     }

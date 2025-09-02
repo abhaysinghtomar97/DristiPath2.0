@@ -19,6 +19,12 @@ urlpatterns = [
     path('admin/logout/', views.admin_logout_view, name='admin_logout'),
     path('admin/signup/', views.admin_signup, name='admin_signup'),
     
+    # User Authentication APIs
+    path('user/login/', views.user_authenticate, name='user_authenticate'),
+    path('user/logout/', views.user_logout_view, name='user_logout'),
+    path('user/signup/', views.user_signup, name='user_signup'),
+    path('csrf-token/', views.get_csrf_token, name='get_csrf_token'),
+    
     # Admin APIs
     path('admin/add_bus/', views.admin_add_bus, name='admin_add_bus'),
     path('admin/list_buses/', views.admin_list_buses, name='admin_list_buses'),
