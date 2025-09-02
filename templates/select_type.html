@@ -1,50 +1,466 @@
 {% extends "base.html" %}
-{% block title %}Select Type — Public Transport Tracking{% endblock %}
+{% block title %}Select User Type — DristiPath{% endblock %}
 {% block head_extra %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-   
-  :root { --primary:#2c3e50; --accent:#3498db; }
-  .container { max-width:960px; margin:0 auto; padding:30px 16px; }
-  .card { border-radius:14px; padding:30px; box-shadow:0 10px 30px rgba(0,0,0,0.08); text-align:center; }
-  .grid { display:grid; grid-template-columns:1fr; gap:18px; margin-top:18px; }
-  @media(min-width:760px){ .grid{ grid-template-columns:1fr 1fr; } }
-  .option { padding:28px; border:2px solid #e5e7eb; border-radius:12px; cursor:pointer; transition: all .2s; }
-  .option:hover { border-color:var(--accent); transform: translateY(-2px); box-shadow:0 6px 18px rgba(52,152,219,0.25); }
-  .btn { background:var(--accent); color:#fff; border:none; border-radius:8px; padding:12px 16px; cursor:pointer; margin-top:16px; font-weight:700; }
-  .chips { margin-top:8px; color:#6b7280; font-size:13px; }
-  section {
-      background: rgba(255, 255, 255, 0.15);
-      border-radius: 12px;
-      padding: 1.5rem;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-      backdrop-filter: blur(10px);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+  /* Modern Variables */
+  :root {
+    --primary: #1e40af;
+    --primary-dark: #1e3a8a;
+    --secondary: #10b981;
+    --accent: #3b82f6;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+    --white: #ffffff;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    --radius: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    line-height: 1.6;
+    color: var(--gray-900);
+    background: var(--gray-50);
+    position: relative;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Navigation Override */
+  .navbar {
+    background: var(--white);
+    color: var(--gray-900);
+    padding: 16px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--shadow-sm);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(20px);
+  }
+
+  .brand {
+    font-weight: 800;
+    font-size: 24px;
+    color: var(--primary);
+    text-decoration: none;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 32px;
+    align-items: center;
+  }
+
+  .nav-link {
+    color: var(--gray-700);
+    text-decoration: none;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+  }
+
+  .nav-link:hover {
+    color: var(--primary);
+    background: var(--gray-100);
+  }
+
+  /* Selection Page Background */
+  .selection-page {
+    background: linear-gradient(135deg, rgba(30, 64, 175, 0.05), rgba(16, 185, 129, 0.05)), 
+                url('https://images.unsplash.com/photo-1506617420156-8e4536971650?auto=format&fit=crop&q=80&w=2000') center/cover no-repeat fixed;
+    min-height: calc(100vh - 70px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 40px 20px;
+    position: relative;
+  }
+  
+  .selection-page::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(30, 64, 175, 0.92), rgba(16, 185, 129, 0.92));
+    backdrop-filter: blur(5px);
+    z-index: 1;
+  }
+
+  .selection-container {
+    max-width: 1000px;
+    width: 100%;
+    z-index: 2;
+    position: relative;
+  }
+
+  .selection-header {
+    text-align: center;
+    margin-bottom: 32px;
+    color: var(--white);
+  }
+
+  .selection-title {
+    font-size: 2.5rem;
+    font-weight: 800;
+    margin-bottom: 12px;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .selection-subtitle {
+    font-size: 1.1rem;
+    font-weight: 400;
+    max-width: 600px;
+    margin: 0 auto;
+    opacity: 0.9;
+  }
+
+  .selection-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 40px;
+  }
+
+  .selection-card {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow-xl);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    position: relative;
+  }
+
+  .selection-card:hover {
+    transform: translateY(-10px) scale(1.02);
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.2);
+  }
+
+  .card-header {
+    padding: 30px 30px 20px 30px;
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    color: var(--white);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .admin-card .card-header {
+    background: linear-gradient(135deg, var(--gray-800), var(--gray-700));
+  }
+
+  .card-icon {
+    width: 80px;
+    height: 80px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2.5rem;
+    margin: 0 auto 20px auto;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .card-title {
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+
+  .card-body {
+    padding: 30px;
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .card-description {
+    color: var(--gray-600);
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 24px;
+    text-align: center;
+    flex: 1;
+  }
+
+  .card-features {
+    margin-bottom: 24px;
+  }
+
+  .feature-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 12px;
+    color: var(--gray-700);
+  }
+
+  .feature-icon {
+    color: var(--accent);
+    font-size: 1.2rem;
+  }
+
+  .admin-card .feature-icon {
+    color: var(--gray-800);
+  }
+
+  .card-button {
+    background: var(--accent);
+    color: var(--white);
+    border: none;
+    border-radius: var(--radius);
+    padding: 16px 24px;
+    font-size: 1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    width: 100%;
+    text-align: center;
+    box-shadow: var(--shadow-md);
+  }
+
+  .card-button:hover {
+    background: var(--primary);
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .admin-card .card-button {
+    background: var(--gray-800);
+  }
+
+  .admin-card .card-button:hover {
+    background: var(--gray-900);
+  }
+
+  /* Background Elements */
+  .bg-shape {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(40px);
+    opacity: 0.2;
+    z-index: 0;
+  }
+
+  .bg-shape-1 {
+    top: -100px;
+    right: -50px;
+    width: 300px;
+    height: 300px;
+    background: var(--accent);
+    animation: float 15s ease-in-out infinite;
+  }
+
+  .bg-shape-2 {
+    bottom: -150px;
+    left: -100px;
+    width: 400px;
+    height: 400px;
+    background: var(--secondary);
+    animation: float 20s ease-in-out infinite reverse;
+  }
+
+  @keyframes float {
+    0% { transform: translate(0, 0) rotate(0deg); }
+    50% { transform: translate(30px, 20px) rotate(8deg); }
+    100% { transform: translate(0, 0) rotate(0deg); }
+  }
+
+  /* Animations */
+  .fade-in {
+    opacity: 0;
+    transform: translateY(30px);
+    animation: fadeInUp 0.8s ease forwards;
+  }
+
+  @keyframes fadeInUp {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .stagger-1 { animation-delay: 0.1s; }
+  .stagger-2 { animation-delay: 0.2s; }
+
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .selection-cards {
+      grid-template-columns: 1fr;
+      max-width: 400px;
+      margin: 0 auto;
     }
 
-    section:hover {
-      transform: translateY(-6px);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    .selection-title {
+      font-size: 2rem;
     }
+
+    .selection-subtitle {
+      font-size: 1rem;
+    }
+
+    .card-header {
+      padding: 25px 25px 15px 25px;
+    }
+
+    .card-body {
+      padding: 25px;
+    }
+
+    .card-icon {
+      width: 70px;
+      height: 70px;
+      font-size: 2rem;
+      margin-bottom: 16px;
+    }
+  }
 </style>
 {% endblock %}
 {% block content %}
-<div class="container">
-  <div class="card section">
-    <h2>Select Type</h2>
-    <p class="chips">Choose how you want to use the app</p>
-    <div class="grid">
-      <div class="option" onclick="location.href='/auth/?type=user'">
-        <h3>Normal User</h3>
-        <p>Find nearest vehicles, view routes, search by ID and check delays.</p>
-        <button class="btn">Continue as User</button>
+<div class="selection-page">
+  <div class="selection-container">
+    <div class="selection-header fade-in">
+      <h1 class="selection-title">Choose Your Access Type</h1>
+      <p class="selection-subtitle">Select how you'd like to use the DristiPath transportation platform</p>
+    </div>
+    
+    <div class="selection-cards">
+      <!-- Passenger Card -->
+      <div class="selection-card fade-in stagger-1" onclick="location.href='/auth/?type=user'">
+        <div class="card-header">
+          <div class="card-icon">🧑‍🚀</div>
+          <h2 class="card-title">Passenger</h2>
+        </div>
+        <div class="card-body">
+          <p class="card-description">Track your vehicles in real-time, check for delays, and find the nearest stops to your location.</p>
+          
+          <div class="card-features">
+            <div class="feature-item">
+              <span class="feature-icon">✓</span>
+              <span>Real-time vehicle tracking</span>
+            </div>
+            <div class="feature-item">
+              <span class="feature-icon">✓</span>
+              <span>Find nearest vehicles</span>
+            </div>
+            <div class="feature-item">
+              <span class="feature-icon">✓</span>
+              <span>Check for delays</span>
+            </div>
+            <div class="feature-item">
+              <span class="feature-icon">✓</span>
+              <span>Route information</span>
+            </div>
+          </div>
+          
+          <button class="card-button">Continue as Passenger</button>
+        </div>
       </div>
-      <div class="option" onclick="location.href='/auth/?type=admin'">
-        <h3>Admin</h3>
-        <p>Sign in to manage vehicles and routes in the admin panel.</p>
-        <button class="btn">Continue as Admin</button>
+      
+      <!-- Admin Card -->
+      <div class="selection-card admin-card fade-in stagger-2" onclick="location.href='/auth/?type=admin'">
+        <div class="card-header">
+          <div class="card-icon">🧑‍💼</div>
+          <h2 class="card-title">Administrator</h2>
+        </div>
+        <div class="card-body">
+          <p class="card-description">Manage and monitor your fleet, update routes, and handle administrative tasks.</p>
+          
+          <div class="card-features">
+            <div class="feature-item">
+              <span class="feature-icon">✓</span>
+              <span>Fleet management</span>
+            </div>
+            <div class="feature-item">
+              <span class="feature-icon">✓</span>
+              <span>Route configuration</span>
+            </div>
+            <div class="feature-item">
+              <span class="feature-icon">✓</span>
+              <span>System monitoring</span>
+            </div>
+            <div class="feature-item">
+              <span class="feature-icon">✓</span>
+              <span>Administrative controls</span>
+            </div>
+          </div>
+          
+          <button class="card-button">Continue as Administrator</button>
+        </div>
       </div>
     </div>
   </div>
+  
+  <!-- Background Elements -->
+  <div class="bg-shape bg-shape-1"></div>
+  <div class="bg-shape bg-shape-2"></div>
 </div>
+{% endblock %}
+{% block scripts %}
+<script>
+  // Intersection Observer for animations
+  const observerOptions = {
+    threshold: 0.1
+  };
+  
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.style.animationPlayState = 'running';
+      }
+    });
+  }, observerOptions);
+  
+  // Observe all fade-in elements
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.fade-in').forEach(el => {
+      el.style.animationPlayState = 'paused';
+      observer.observe(el);
+    });
+  });
+  
+  // Card hover effect enhancement
+  document.querySelectorAll('.selection-card').forEach(card => {
+    card.addEventListener('mouseenter', function() {
+      this.style.transform = 'translateY(-10px) scale(1.02)';
+    });
+    
+    card.addEventListener('mouseleave', function() {
+      this.style.transform = '';
+    });
+  });
+</script>
 {% endblock %}
 

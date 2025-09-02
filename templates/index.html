@@ -1,74 +1,693 @@
 {% extends "base.html" %}
-{% block title %}Home — Real-Time Public Transport Tracking{% endblock %}
+{% block title %}DristiPath — Smart Transportation & Logistics{% endblock %}
 {% block head_extra %}
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
- 
-  :root { --primary:#2c3e50; --accent:#3498db; --bg:#f5f5f5; }
-  .hero { min-height: calc(100vh - 68px); display: grid; place-items: center; padding: 40px 20px; position: relative; overflow: hidden; }
-  .card {  border-radius: 16px; padding: 40px 28px; max-width: 760px; width: 96%; box-shadow: 0 10px 30px rgba(0,0,0,0.08); text-align: center; }
-  h1 { margin: 0 0 10px 0; color: var(--primary); font-size: 28px; }
-  p.lead { margin: 0 0 20px 0; color: #4b5563; }
-  .features { display: flex; gap: 10px; justify-content: center; flex-wrap: wrap; margin-top: 12px; }
-  .feature-pill { padding: 8px 14px; background: #ecf5ff; border: 1px solid #cfe8ff; color: #0f4871; border-radius: 999px; font-size: 12px; }
-  .cta { margin-top: 26px; }
-  {% comment %} .btn { background: var(--accent); color: #fff; border: none; padding: 12px 22px; border-radius: 8px; font-weight: 700; cursor: pointer; box-shadow: 0 4px 10px rgba(52,152,219,0.25); } {% endcomment %}
-  .btn:hover { background: #2b7bb8; }
-  .sub { margin-top: 14px; font-size: 13px; color: #6b7280; }
-  .footer { text-align: center; padding: 20px; color: #6b7280; font-size: 12px; }
-  .bg-shape { position: absolute; width: 800px; height: 800px; background: radial-gradient(closest-side, rgba(4, 32, 50, 0.18), rgba(52, 152, 219, 0)); border-radius: 50%; top: -220px; right: -200px; filter: blur(2px); }
-  .bg-shape-2 { position: absolute; width: 700px; height: 700px; background: radial-gradient(closest-side, rgba(39,174,96,0.16), rgba(39, 174, 95, 0)); border-radius: 50%; bottom: -240px; left: -220px; filter: blur(2px); }
-  .get-started {
-      background: linear-gradient(135deg, #ffd700, #ff9900);
-      color: #000;
-      font-weight: bold;
-      padding: 0.7rem 1.5rem;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      font-size: 1rem;
-      transition: transform 0.2s;
+  /* Modern Variables */
+  :root {
+    --primary: #1e40af;
+    --primary-dark: #1e3a8a;
+    --secondary: #10b981;
+    --accent: #3b82f6;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --gray-50: #f9fafb;
+    --gray-100: #f3f4f6;
+    --gray-200: #e5e7eb;
+    --gray-300: #d1d5db;
+    --gray-400: #9ca3af;
+    --gray-500: #6b7280;
+    --gray-600: #4b5563;
+    --gray-700: #374151;
+    --gray-800: #1f2937;
+    --gray-900: #111827;
+    --white: #ffffff;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    --radius: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+  }
+
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    line-height: 1.6;
+    color: var(--gray-900);
+    background: var(--gray-50);
+    overflow-x: hidden;
+  }
+
+  /* Navigation Override */
+  .navbar {
+    background: var(--white);
+    color: var(--gray-900);
+    padding: 16px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: var(--shadow-sm);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(20px);
+  }
+
+  .brand {
+    font-weight: 800;
+    font-size: 24px;
+    color: var(--primary);
+    text-decoration: none;
+  }
+
+  .nav-links {
+    display: flex;
+    gap: 32px;
+    align-items: center;
+  }
+
+  .nav-link {
+    color: var(--gray-700);
+    text-decoration: none;
+    font-weight: 500;
+    padding: 8px 16px;
+    border-radius: 8px;
+    transition: all 0.3s ease;
+  }
+
+  .nav-link:hover {
+    color: var(--primary);
+    background: var(--gray-100);
+  }
+
+  .nav-cta {
+    background: var(--primary);
+    color: var(--white);
+    padding: 10px 20px;
+    border-radius: var(--radius);
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    box-shadow: var(--shadow);
+  }
+
+  .nav-cta:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+    box-shadow: var(--shadow-lg);
+  }
+
+  /* Hero Section */
+  .hero {
+    background: linear-gradient(135deg, rgba(30, 64, 175, 0), rgba(16, 185, 129, 0)), 
+                url('https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?auto=format&fit=crop&w=2000&q=80') center/cover;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    padding: 80px 32px;
+    text-align: center;
+  }
+
+  .hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(30, 64, 175, 0.8), rgba(16, 185, 129, 0.6));
+  }
+
+  .hero-content {
+    position: relative;
+    z-index: 10;
+    max-width: 800px;
+    color: var(--white);
+  }
+
+  .hero-title {
+    font-size: 3.5rem;
+    font-weight: 800;
+    margin-bottom: 24px;
+    line-height: 1.1;
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  }
+
+  .hero-subtitle {
+    font-size: 1.25rem;
+    font-weight: 400;
+    margin-bottom: 40px;
+    opacity: 0.95;
+    line-height: 1.6;
+  }
+
+  .track-now-btn {
+    background: linear-gradient(135deg, var(--warning), #ff6b35);
+    color: var(--white);
+    border: none;
+    padding: 18px 36px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: var(--shadow-xl);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  .track-now-btn:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 25px 50px -10px rgba(245, 158, 11, 0.4);
+  }
+
+  /* Features Section */
+  .features-section {
+    padding: 100px 32px;
+    background: var(--white);
+  }
+
+  .section-container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .section-title {
+    text-align: center;
+    font-size: 2.5rem;
+    font-weight: 700;
+    color: var(--gray-900);
+    margin-bottom: 16px;
+  }
+
+  .section-subtitle {
+    text-align: center;
+    font-size: 1.1rem;
+    color: var(--gray-600);
+    margin-bottom: 60px;
+    max-width: 600px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .features-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 32px;
+    margin-top: 60px;
+  }
+
+  .feature-card {
+    background: var(--white);
+    border-radius: var(--radius-lg);
+    padding: 40px 32px;
+    text-align: center;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid var(--gray-200);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .feature-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary), var(--secondary));
+    transform: scaleX(0);
+    transition: transform 0.4s ease;
+  }
+
+  .feature-card:hover {
+    transform: translateY(-8px);
+    box-shadow: var(--shadow-xl);
+  }
+
+  .feature-card:hover::before {
+    transform: scaleX(1);
+  }
+
+  .feature-icon {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, var(--primary), var(--secondary));
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 2rem;
+    margin: 0 auto 24px auto;
+    color: var(--white);
+    box-shadow: var(--shadow-lg);
+  }
+
+  .feature-title {
+    font-size: 1.3rem;
+    font-weight: 600;
+    color: var(--gray-900);
+    margin-bottom: 12px;
+  }
+
+  .feature-description {
+    color: var(--gray-600);
+    line-height: 1.6;
+  }
+
+  /* FAQ Section */
+  .faq-section {
+    padding: 100px 32px;
+    background: var(--gray-50);
+  }
+
+  .faq-container {
+    max-width: 800px;
+    margin: 0 auto;
+  }
+
+  .faq-item {
+    background: var(--white);
+    border-radius: var(--radius);
+    margin-bottom: 16px;
+    border: 1px solid var(--gray-200);
+    overflow: hidden;
+    transition: all 0.3s ease;
+  }
+
+  .faq-item:hover {
+    box-shadow: var(--shadow-md);
+  }
+
+  .faq-question {
+    padding: 24px 32px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-weight: 600;
+    color: var(--gray-900);
+    font-size: 1.1rem;
+    background: var(--white);
+    border: none;
+    width: 100%;
+    text-align: left;
+    transition: all 0.3s ease;
+  }
+
+  .faq-question:hover {
+    background: var(--gray-50);
+  }
+
+  .faq-icon {
+    font-size: 1.2rem;
+    color: var(--primary);
+    transition: transform 0.3s ease;
+  }
+
+  .faq-answer {
+    padding: 0 32px 24px 32px;
+    color: var(--gray-600);
+    line-height: 1.7;
+    display: none;
+    animation: slideDown 0.3s ease;
+  }
+
+  .faq-item.active .faq-answer {
+    display: block;
+  }
+
+  .faq-item.active .faq-icon {
+    transform: rotate(180deg);
+  }
+
+  @keyframes slideDown {
+    from {
+      opacity: 0;
+      transform: translateY(-10px);
     }
-    .get-started:hover {
-      transform: scale(1.05);
+    to {
+      opacity: 1;
+      transform: translateY(0);
     }
-    section {
-      background: rgba(255, 255, 255, 0.15);
-      border-radius: 12px;
-      padding: 1.5rem;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-      backdrop-filter: blur(10px);
-      transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+
+  /* Footer */
+  .footer {
+    background: var(--gray-900);
+    color: var(--gray-300);
+    padding: 60px 32px 32px 32px;
+  }
+
+  .footer-container {
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+
+  .footer-content {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 40px;
+    margin-bottom: 40px;
+  }
+
+  .footer-section h4 {
+    color: var(--white);
+    font-weight: 600;
+    margin-bottom: 16px;
+    font-size: 1.1rem;
+  }
+
+  .footer-section p,
+  .footer-section a {
+    color: var(--gray-400);
+    text-decoration: none;
+    line-height: 1.8;
+    transition: color 0.3s ease;
+  }
+
+  .footer-section a:hover {
+    color: var(--secondary);
+  }
+
+  .footer-links {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .social-links {
+    display: flex;
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  .social-link {
+    width: 40px;
+    height: 40px;
+    background: var(--gray-800);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--gray-400);
+    text-decoration: none;
+    transition: all 0.3s ease;
+  }
+
+  .social-link:hover {
+    background: var(--primary);
+    color: var(--white);
+    transform: translateY(-2px);
+  }
+
+  .footer-bottom {
+    border-top: 1px solid var(--gray-800);
+    padding-top: 32px;
+    text-align: center;
+    color: var(--gray-500);
+  }
+
+  /* Mobile Navigation */
+  .mobile-menu {
+    display: none;
+  }
+
+  .mobile-menu-btn {
+    background: none;
+    border: none;
+    color: var(--gray-700);
+    font-size: 1.5rem;
+    cursor: pointer;
+    padding: 8px;
+  }
+
+  /* Responsive Design */
+  @media (max-width: 768px) {
+    .nav-links {
+      display: none;
     }
 
-    section:hover {
-      transform: translateY(-6px);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.4);
+    .mobile-menu {
+      display: block;
     }
+
+    .hero-title {
+      font-size: 2.5rem;
+    }
+
+    .hero-subtitle {
+      font-size: 1.1rem;
+    }
+
+    .navbar {
+      padding: 16px 20px;
+    }
+
+    .features-section,
+    .faq-section {
+      padding: 60px 20px;
+    }
+
+    .footer {
+      padding: 40px 20px 20px 20px;
+    }
+
+    .footer-content {
+      grid-template-columns: 1fr;
+      gap: 24px;
+    }
+  }
+
+  /* Animations */
+  .fade-in {
+    opacity: 0;
+    transform: translateY(30px);
+    animation: fadeInUp 0.8s ease forwards;
+  }
+
+  @keyframes fadeInUp {
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .stagger-1 { animation-delay: 0.1s; }
+  .stagger-2 { animation-delay: 0.2s; }
+  .stagger-3 { animation-delay: 0.3s; }
+  .stagger-4 { animation-delay: 0.4s; }
 </style>
 {% endblock %}
 {% block content %}
-  <main class="hero">
-    <div class="bg-shape"></div>
-    <div class="bg-shape-2"></div>
-    <section class="card">
-      <h1>Track buses, metros, and public transport in real time</h1>
-      <p class="lead">Start by choosing whether you're a normal user or an admin. You can sign in or continue as guest for quick access.</p>
-      <div class="features">
-        <div class="feature-pill">Nearest Vehicles</div>
-        <div class="feature-pill">My Location</div>
-        <div class="feature-pill">Filter by Route</div>
-        <div class="feature-pill">ID Search</div>
-        <div class="feature-pill">Delay Check</div>
+<!-- Hero Section -->
+<section class="hero">
+  <div class="hero-overlay"></div>
+  <div class="hero-content">
+    <h1 class="hero-title fade-in">Smart Transportation<br>& Logistics Tracking</h1>
+    <p class="hero-subtitle fade-in stagger-1">Track buses, metros, and public transport in real-time. Get delay notifications, find nearest stops, and navigate with confidence.</p>
+    <button class="track-now-btn fade-in stagger-2" onclick="location.href='/select/'">Track Now</button>
+  </div>
+</section>
+
+<!-- Features Section -->
+<section class="features-section">
+  <div class="section-container">
+    <h2 class="section-title fade-in">Powerful Features</h2>
+    <p class="section-subtitle fade-in stagger-1">Everything you need for efficient public transport tracking</p>
+    
+    <div class="features-grid">
+      <div class="feature-card fade-in stagger-1">
+        <div class="feature-icon">🚌</div>
+        <h3 class="feature-title">Real-time Vehicle Tracking</h3>
+        <p class="feature-description">Monitor buses and metros with live GPS tracking. See exact locations, routes, and estimated arrival times.</p>
       </div>
-      <div class="cta">
-        <button class="btn get-started" onclick="location.href='/select/'">Get Started</button>
-        <div class="sub">Transport & Logistics theme — Real-Time Public Transport Tracking.</div>
+      
+      <div class="feature-card fade-in stagger-2">
+        <div class="feature-icon">⚠️</div>
+        <h3 class="feature-title">Delay Notifications</h3>
+        <p class="feature-description">Get instant alerts about delays, route changes, and service disruptions to plan your journey better.</p>
       </div>
-    </section>
-  </main>
-  <div class="footer">© <span id="y"></span> Public Transport Tracker</div>
+      
+      <div class="feature-card fade-in stagger-3">
+        <div class="feature-icon">🎯</div>
+        <h3 class="feature-title">Nearest Stop Finder</h3>
+        <p class="feature-description">Find the closest bus stops and metro stations with distance calculations and walking directions.</p>
+      </div>
+      
+      <div class="feature-card fade-in stagger-4">
+        <div class="feature-icon">📍</div>
+        <h3 class="feature-title">Smart Radius Search</h3>
+        <p class="feature-description">Search for vehicles within a custom radius. Perfect for finding transport options in your area.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ Section -->
+<section class="faq-section">
+  <div class="section-container">
+    <div class="faq-container">
+      <h2 class="section-title fade-in">Frequently Asked Questions</h2>
+      <p class="section-subtitle fade-in stagger-1">Everything you need to know about DristiPath</p>
+      
+      <div class="faq-item fade-in stagger-1">
+        <button class="faq-question" onclick="toggleFAQ(this)">
+          <span>How do I track my bus?</span>
+          <span class="faq-icon">▼</span>
+        </button>
+        <div class="faq-answer">
+          Simply click "Track Now", select "Passenger", and use the search feature to find your bus by route number or vehicle ID. You can also use "Find Nearest" to see vehicles around you.
+        </div>
+      </div>
+      
+      <div class="faq-item fade-in stagger-2">
+        <button class="faq-question" onclick="toggleFAQ(this)">
+          <span>Can I check for delays?</span>
+          <span class="faq-icon">▼</span>
+        </button>
+        <div class="faq-answer">
+          Yes! Use the "Check Delays" feature to see which vehicles are running behind schedule. You'll get real-time delay information and alternative route suggestions.
+        </div>
+      </div>
+      
+      <div class="faq-item fade-in stagger-3">
+        <button class="faq-question" onclick="toggleFAQ(this)">
+          <span>How accurate is the location tracking?</span>
+          <span class="faq-icon">▼</span>
+        </button>
+        <div class="faq-answer">
+          Our system uses GPS tracking with updates every 10-15 seconds. Location accuracy is typically within 5-10 meters, depending on GPS signal strength and vehicle equipment.
+        </div>
+      </div>
+      
+      <div class="faq-item fade-in stagger-4">
+        <button class="faq-question" onclick="toggleFAQ(this)">
+          <span>Do I need to create an account?</span>
+          <span class="faq-icon">▼</span>
+        </button>
+        <div class="faq-answer">
+          No account required for basic tracking! You can use most features as a guest. However, creating an account allows you to save favorite routes and get personalized notifications.
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Footer -->
+<footer class="footer">
+  <div class="footer-container">
+    <div class="footer-content">
+      <div class="footer-section">
+        <h4>DristiPath</h4>
+        <p>Smart transportation tracking for the modern world. Making public transport more reliable and accessible for everyone.</p>
+        <div class="social-links">
+          <a href="#" class="social-link">📘</a>
+          <a href="#" class="social-link">🐦</a>
+          <a href="#" class="social-link">📸</a>
+          <a href="#" class="social-link">💼</a>
+        </div>
+      </div>
+      
+      <div class="footer-section">
+        <h4>Quick Links</h4>
+        <div class="footer-links">
+          <a href="/">Home</a>
+          <a href="/select/">Get Started</a>
+          <a href="/user/">User Dashboard</a>
+          <a href="/auth/?type=admin">Admin Panel</a>
+        </div>
+      </div>
+      
+      <div class="footer-section">
+        <h4>Features</h4>
+        <div class="footer-links">
+          <a href="#">Real-time Tracking</a>
+          <a href="#">Delay Notifications</a>
+          <a href="#">Nearest Finder</a>
+          <a href="#">Route Planning</a>
+        </div>
+      </div>
+      
+      <div class="footer-section">
+        <h4>Contact</h4>
+        <p>Email: support@dristipath.com</p>
+        <p>Phone: +91 (11) 1234-5678</p>
+        <p>Address: New Delhi, India</p>
+      </div>
+    </div>
+    
+    <div class="footer-bottom">
+      <p>&copy; <span id="year"></span> DristiPath. All rights reserved. | Transportation & Logistics Solutions</p>
+    </div>
+  </div>
+</footer>
 {% endblock %}
 {% block scripts %}
-<script>document.getElementById('y').textContent = new Date().getFullYear();</script>
+<script>
+  // Update year
+  document.getElementById('year').textContent = new Date().getFullYear();
+  
+  // FAQ Toggle
+  function toggleFAQ(button) {
+    const faqItem = button.closest('.faq-item');
+    const isActive = faqItem.classList.contains('active');
+    
+    // Close all FAQ items
+    document.querySelectorAll('.faq-item').forEach(item => {
+      item.classList.remove('active');
+    });
+    
+    // Open clicked item if it wasn't active
+    if (!isActive) {
+      faqItem.classList.add('active');
+    }
+  }
+  
+  // Intersection Observer for animations
+  const observerOptions = {
+    threshold: 0.1,
+    rootMargin: '0px 0px -50px 0px'
+  };
+  
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.style.animationPlayState = 'running';
+      }
+    });
+  }, observerOptions);
+  
+  // Observe all fade-in elements
+  document.addEventListener('DOMContentLoaded', () => {
+    document.querySelectorAll('.fade-in').forEach(el => {
+      observer.observe(el);
+    });
+  });
+  
+  // Smooth scrolling for anchor links
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', function (e) {
+      e.preventDefault();
+      const target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        target.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start'
+        });
+      }
+    });
+  });
+</script>
 {% endblock %}
 
