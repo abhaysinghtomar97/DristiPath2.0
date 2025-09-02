@@ -79,14 +79,23 @@ WSGI_APPLICATION = 'mytrackingproject.wsgi.application'
 # -------------------------
 # Database (Render PostgreSQL)
 # -------------------------
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get("DATABASE_URL"),  # Render provides this
-        conn_max_age=600,
-        ssl_require=True
-    )
-}
-
+# Database
+if os.environ.get("DATABASE_URL"):
+    DATABASES = {
+        "default": dj_database_url.config(
+            default=os.environ["DATABASE_URL"],
+            conn_max_age=600,
+            ssl_require=True
+        )
+    }
+else:
+    # Local fallback (SQLite)
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
 
 # -------------------------
 # Password validation
