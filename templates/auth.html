@@ -74,22 +74,22 @@
       rgba(234, 88, 12, 0.08) 0%, 
       rgba(239, 68, 68, 0.05) 50%, 
       rgba(243, 244, 246, 0.9) 100%),
-      url('https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&q=80&w=2000') center/cover no-repeat fixed;
+      url('https://trdsf.com/cdn/shop/articles/transportation-logistics.png?v=1704913187') center/cover no-repeat fixed;
   }
 
   /* Navigation Override */
   .navbar {
-    background: rgba(255, 255, 255, 0.95);
-    color: var(--gray-900);
-    padding: 16px 32px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: var(--shadow-sm);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    backdrop-filter: blur(20px);
+      position: fixed; /* keep it floating above hero */
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: transparent; /* transparent background */
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 40px;
+      z-index: 10; /* make sure it’s above hero */
+      backdrop-filter: blur(4px); 
   }
 
   .brand {
@@ -148,6 +148,7 @@
   }
 
   .auth-card {
+    margin-top:50px;
     background: var(--white);
     border-radius: var(--radius-2xl);
     overflow: hidden;
@@ -434,6 +435,7 @@
   }
 
   .form-panel {
+    
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
@@ -581,6 +583,7 @@
     }
 
     .auth-body {
+     
       padding: 28px 24px;
     }
 
