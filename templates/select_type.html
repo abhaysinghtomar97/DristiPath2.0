@@ -50,23 +50,24 @@
 
   /* Navigation Override */
   .navbar {
-    background: var(--white);
-    color: var(--gray-900);
-    padding: 16px 32px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: var(--shadow-sm);
-    position: sticky;
-    top: 0;
-    z-index: 100;
-    backdrop-filter: blur(20px);
+    border-radius:80px;
+      position:fixed; 
+      top: 0;
+      left: 0;
+      width: 100%;
+      background: transparent; 
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 40px;
+      z-index: 100; 
+      
+      backdrop-filter: blur(4px); 
   }
-
   .brand {
     font-weight: 800;
     font-size: 24px;
-    color: var(--primary);
+    color: #313b4a;
     text-decoration: none;
   }
 
@@ -92,8 +93,8 @@
 
   /* Selection Page Background */
   .selection-page {
-    background: linear-gradient(135deg, rgba(30, 64, 175, 0.05), rgba(16, 185, 129, 0.05)), 
-                url('https://images.unsplash.com/photo-1506617420156-8e4536971650?auto=format&fit=crop&q=80&w=2000') center/cover no-repeat fixed;
+    background: linear-gradient(135deg, rgba(30, 64, 175, 0.05), rgba(16, 185, 129, 0)), 
+                url('https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSgaTzU-OpyZu1Hm91fo_kwiMRGMkK9BAXCtg&s') center/cover no-repeat fixed;
     min-height: calc(100vh - 70px);
     display: flex;
     align-items: center;
@@ -104,6 +105,7 @@
   
   .selection-page::before {
     content: '';
+    
     position: absolute;
     top: 0;
     left: 0;
@@ -122,12 +124,14 @@
   }
 
   .selection-header {
+    margin-top:50px;
     text-align: center;
-    margin-bottom: 32px;
+    {% comment %} margin-bottom: 32px; {% endcomment %}
     color: var(--white);
   }
 
   .selection-title {
+    
     font-size: 2.5rem;
     font-weight: 800;
     margin-bottom: 12px;
@@ -143,6 +147,7 @@
   }
 
   .selection-cards {
+    margin-top:50px;
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: 40px;
@@ -324,6 +329,7 @@
     }
 
     .selection-title {
+      
       font-size: 2rem;
     }
 
