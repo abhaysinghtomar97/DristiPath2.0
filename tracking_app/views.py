@@ -10,7 +10,9 @@ from django.utils import timezone
 from datetime import timedelta
 import json
 import uuid
+from math import cos, radians
 from .models import BusLocation, Bus, Route, UserLocation, BusStop
+from .location_utils import get_location_name, get_route_display_name
 
 # Create your views here.
 
@@ -83,13 +85,19 @@ def get_locations(request):
         for bus in buses:
             latest_location = bus.locations.first()  # Latest due to ordering
             if latest_location:
+                # Get human-readable location name
+                location_name = get_location_name(latest_location.latitude, latest_location.longitude)
+                route_display_name = get_route_display_name(bus.route)
+                
                 latest_locations.append({
                     'bus_id': bus.bus_id,
                     'bus_number': bus.bus_number,
                     'route_id': bus.route.route_id if bus.route else None,
                     'route_name': bus.route.name if bus.route else None,
+                    'route_display_name': route_display_name,
                     'latitude': latest_location.latitude,
                     'longitude': latest_location.longitude,
+                    'location_name': location_name,  # Human-readable location
                     'speed': latest_location.speed,
                     'heading': latest_location.heading,
                     'last_updated': latest_location.last_updated.isoformat(),
@@ -152,7 +160,7 @@ def update_user_location(request):
 
 @require_http_methods(["GET"])
 def find_nearest_buses(request):
-    """Find nearest buses to user's location"""
+    """Find nearest buses to user's location - SIMPLE AND FAST"""
     try:
         # Get user's location parameters
         latitude = request.GET.get('lat')
@@ -166,36 +174,51 @@ def find_nearest_buses(request):
         latitude = float(latitude)
         longitude = float(longitude)
         
-        # Create temporary user location object
-        temp_user_location = UserLocation(
-            latitude=latitude,
-            longitude=longitude
-        )
+        # SIMPLE APPROACH: Get all active bus locations with select_related to avoid N+1 queries
+        bus_locations = BusLocation.objects.select_related(
+            'bus', 'bus__route'
+        ).filter(
+            bus__is_active=True
+        ).order_by('-last_updated')  # Get latest locations first
         
-        # Find nearest buses
-        nearest_buses = temp_user_location.find_nearest_buses(radius, limit)
+        # Calculate distances and find nearby buses
+        nearby_buses = []
+        for bus_location in bus_locations:
+            distance = BusLocation.calculate_distance(
+                latitude, longitude,
+                bus_location.latitude, bus_location.longitude
+            )
+            
+            if distance <= radius:
+                # Use cached/predefined location names to avoid slow API calls
+                location_name = get_location_name(bus_location.latitude, bus_location.longitude)
+                route_display_name = get_route_display_name(bus_location.bus.route)
+                
+                nearby_buses.append({
+                    'bus_id': bus_location.bus.bus_id,
+                    'bus_number': bus_location.bus.bus_number,
+                    'route_id': bus_location.bus.route.route_id if bus_location.bus.route else None,
+                    'route_name': bus_location.bus.route.name if bus_location.bus.route else None,
+                    'route_display_name': route_display_name,
+                    'latitude': bus_location.latitude,
+                    'longitude': bus_location.longitude,
+                    'location_name': location_name,
+                    'distance_km': round(distance, 2),
+                    'speed': bus_location.speed,
+                    'current_speed': bus_location.bus.current_speed,
+                    'driver_name': bus_location.bus.driver_name,
+                    'driver_mobile': bus_location.bus.driver_mobile,
+                    'last_updated': bus_location.last_updated.isoformat()
+                })
         
-        # Format response
-        buses_data = []
-        for bus_info in nearest_buses:
-            bus = bus_info['bus']
-            location = bus_info['location']
-            buses_data.append({
-                'bus_id': bus.bus_id,
-                'bus_number': bus.bus_number,
-                'route_id': bus.route.route_id if bus.route else None,
-                'route_name': bus.route.name if bus.route else None,
-                'latitude': location.latitude,
-                'longitude': location.longitude,
-                'distance_km': bus_info['distance'],
-                'speed': location.speed,
-                'last_updated': location.last_updated.isoformat()
-            })
+        # Sort by distance and limit results
+        nearby_buses.sort(key=lambda x: x['distance_km'])
+        nearby_buses = nearby_buses[:limit]
         
         return JsonResponse({
             'status': 'success',
-            'nearest_buses': buses_data,
-            'count': len(buses_data),
+            'nearest_buses': nearby_buses,
+            'count': len(nearby_buses),
             'search_radius_km': radius,
             'user_location': {
                 'latitude': latitude,
@@ -713,9 +736,12 @@ def admin_analytics(request):
         loc_last_hour = BusLocation.objects.filter(bus__owner=request.user, last_updated__gte=one_hour_ago).count()
         loc_last_day = BusLocation.objects.filter(bus__owner=request.user, last_updated__gte=one_day_ago).count()
         
-        # Buses with activity in last 3 minutes
-        recent_bus_ids = BusLocation.objects.filter(bus__owner=request.user, last_updated__gte=three_min_ago).values_list('bus_id', flat=True).distinct()
-        active_recent = Bus.objects.filter(owner=request.user, id__in=recent_bus_ids).count()
+        # FIXED: Active vehicles count based on last_seen in last 5 minutes
+        recent_bus_ids = BusLocation.objects.filter(
+            bus__owner=request.user, 
+            last_updated__gte=five_min_ago
+        ).values_list('bus__id', flat=True).distinct()
+        active_recent = Bus.objects.filter(owner=request.user, id__in=recent_bus_ids, is_active=True).count()
         
         # Vehicle type distribution (per-admin)
         type_counts_qs = (

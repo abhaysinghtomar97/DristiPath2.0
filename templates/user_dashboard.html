@@ -610,6 +610,11 @@
       <span>Check Delays</span>
     </button>
     
+    <button class="control-button" id="btn-search-bus">
+      <span>🔍</span>
+      <span>Search by Bus Number</span>
+    </button>
+    
     <div class="radius-section">
       <div class="radius-title">Search Radius</div>
       <input type="range" class="radius-slider" id="radius-slider" min="1" max="50" value="5">
@@ -986,8 +991,9 @@
                   <div class="vehicle-status status-active">Nearby</div>
                 </div>
                 <div class="vehicle-details">
-                  <div class="vehicle-route">Route: ${vehicle.route_name || vehicle.route_id || 'Unknown'}</div>
-                  <div>Distance: ~${(vehicle.distance || Math.random() * radius).toFixed(1)}km</div>
+                  <div class="vehicle-route">${vehicle.route_display_name || vehicle.route_name || vehicle.route_id || 'Unknown Route'}</div>
+                  <div>Location: ${vehicle.location_name || `${vehicle.latitude.toFixed(4)}, ${vehicle.longitude.toFixed(4)}`}</div>
+                  <div>Distance: ~${(vehicle.distance_km || Math.random() * radius).toFixed(1)}km</div>
                   <div>Last update: ${formatTimeAgo(vehicle.last_updated)}</div>
                 </div>
               </div>
@@ -1358,6 +1364,78 @@
     }
   }
 
+  // NEW: Search by Bus Number functionality - Uses input field instead of popup
+  async function handleSearchBus() {
+    setActiveButton('btn-search-bus');
+    
+    // Get value from the search input field instead of popup
+    const searchInput = document.getElementById('search-input');
+    const busNumber = searchInput.value.trim();
+    
+    if (!busNumber) {
+      updateContent('🔍 Search by Bus Number', 'Enter bus number in search field', '<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">Enter bus number</div><div class="empty-subtitle">Type a bus number in the search field above and click this button</div></div>');
+      // Focus and highlight the search input
+      searchInput.focus();
+      searchInput.select();
+      return;
+    }
+    
+    updateContent('🔍 Search by Bus Number', `Searching for bus "${busNumber}"...`, '<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">Searching...</div></div>');
+    
+    try {
+      const data = await fetchJSON(`/api/bus/search/?q=${encodeURIComponent(busNumber)}`);
+      if (data.status === 'success') {
+        const results = data.buses || [];
+        
+        if (results.length === 0) {
+          updateContent('🔍 Search Results', `No buses found for "${busNumber}"`, '<div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-title">No buses found</div><div class="empty-subtitle">Try a different bus number</div></div>');
+          return;
+        }
+        
+        const searchHtml = `
+          <div class="vehicle-list">
+            ${results.map(vehicle => `
+              <div class="vehicle-item" onclick="showVehicleDetails('${vehicle.bus_id}')">
+                <div class="vehicle-header">
+                  <div class="vehicle-number">#${vehicle.bus_number || vehicle.bus_id}</div>
+                  <div class="vehicle-status status-active">Found</div>
+                </div>
+                <div class="vehicle-details">
+                  <div class="vehicle-route">Route: ${vehicle.route_name || vehicle.route_id || 'Unknown'}</div>
+                  <div>Vehicle Type: ${vehicle.vehicle_type || 'Bus'}</div>
+                  <div>Driver: ${vehicle.driver_name || 'N/A'}</div>
+                  <div>Capacity: ${vehicle.capacity || 'N/A'} passengers</div>
+                  ${vehicle.current_location ? `<div>Last seen: ${formatTimeAgo(vehicle.current_location.last_updated)}</div>` : '<div>No recent location data</div>'}
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        `;
+        
+        updateContent('🔍 Bus Search Results', `Found ${results.length} bus(es) for "${busNumber}"`, searchHtml);
+        
+        // Show buses on map if they have location data
+        const busesWithLocation = results.filter(b => b.current_location).map(b => ({
+          bus_id: b.bus_id,
+          bus_number: b.bus_number,
+          latitude: b.current_location.latitude,
+          longitude: b.current_location.longitude,
+          route_name: b.route_name,
+          last_updated: b.current_location.last_updated
+        }));
+        
+        if (busesWithLocation.length > 0) {
+          updateMapMarkers(busesWithLocation);
+        }
+        
+        // Clear the search input after successful search
+        searchInput.value = '';
+      }
+    } catch (e) {
+      updateContent('🔍 Search by Bus Number', 'Search failed', '<div class="empty-state"><div class="empty-icon">❌</div><div class="empty-title">Search failed</div><div class="empty-subtitle">Please try again</div></div>');
+    }
+  }
+
   // Search and Filter
   async function handleSearch() {
     const query = document.getElementById('search-input').value.trim();
@@ -1478,6 +1556,7 @@
     document.getElementById('btn-my-location').onclick = handleMyLocation;
     document.getElementById('btn-find-nearest').onclick = handleFindNearest;
     document.getElementById('btn-check-delays').onclick = handleCheckDelays;
+    document.getElementById('btn-search-bus').onclick = handleSearchBus;
     
     // Theme toggle
     document.getElementById('theme-toggle').onclick = toggleTheme;

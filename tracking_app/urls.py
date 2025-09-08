@@ -12,6 +12,7 @@ urlpatterns = [
     
     # Bus search APIs
     path('search_buses/', views.search_buses, name='search_buses'),
+    path('bus/search/', views.search_buses, name='bus_search'),  # Alternative endpoint for bus search
     path('routes/', views.get_routes, name='get_routes'),
     
     # Authentication APIs
