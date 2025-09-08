@@ -39,9 +39,11 @@ class Bus(models.Model):
     bus_id = models.CharField(max_length=50)
     route = models.ForeignKey(Route, on_delete=models.CASCADE, related_name='buses')
     driver_name = models.CharField(max_length=100, blank=True)
+    driver_mobile = models.CharField(max_length=15, blank=True, help_text="Driver's contact number")
     bus_number = models.CharField(max_length=50)
     vehicle_type = models.CharField(max_length=20, choices=VEHICLE_TYPES, default="bus")
     capacity = models.IntegerField(default=50)
+    current_speed = models.FloatField(default=0.0, help_text="Current speed in km/h")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
