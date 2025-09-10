@@ -3,6 +3,7 @@ Django settings for mytrackingproject project.
 """
 
 import os
+import environ
 from pathlib import Path
 import dj_database_url
 
@@ -11,6 +12,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # -------------------------
 # Security
 # -------------------------
+
+env = environ.Env()
+environ.Env.read_env(os.path.join(BASE_DIR, ".env"))
+
 SECRET_KEY = os.environ.get(
     "DJANGO_SECRET_KEY",
     "django-insecure-mp--#v)6pzjse5gljj%dpt(@vpo&_#5^%(j*@_v(o!f^rvae^j"  # fallback (local only)
@@ -90,12 +95,19 @@ WSGI_APPLICATION = 'mytrackingproject.wsgi.application'
 #     }
 # else:
     # Local fallback (SQLite)
+    # DATABASES = {
+    #         "default": {
+    #             "ENGINE": "django.db.backends.sqlite3",
+    #             "NAME": BASE_DIR / "db.sqlite3",
+    #         }
+    #     }
+
 DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
+    'default': env.db('DATABASE_URL')
+}
+
+
+
 
 # -------------------------
 # Password validation
