@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.conf import settings
 from math import radians, cos, sin, asin, sqrt
 
-# Create your models here.
+
 
 class Route(models.Model):
     """Route information (per admin owner)"""

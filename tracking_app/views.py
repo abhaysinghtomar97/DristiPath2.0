@@ -673,23 +673,18 @@ def admin_add_route(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def admin_clean_old_locations(request):
-    """Delete BusLocation rows older than N days (default 7) for current admin's vehicles."""
+    """Delete BusLocation rows from the last 24 hours for current admin's vehicles."""
     try:
         if not request.user.is_authenticated or not request.user.is_staff:
             return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
-        data = json.loads(request.body) if request.body else {}
-        days = int(data.get('days', 7))
-        cutoff = timezone.now() - timedelta(days=days)
-        deleted, _ = BusLocation.objects.filter(bus__owner=request.user, last_updated__lt=cutoff).delete()
-        return JsonResponse({'status': 'success', 'deleted': deleted, 'days': days})
-        deleted, _ = BusLocation.objects.filter(last_updated__lt=cutoff).delete()
-        return JsonResponse({'status': 'success', 'deleted': deleted, 'days': days})
 
-    except ValueError:
-        return JsonResponse({'error': 'Invalid days value'}, status=400)
+        cutoff = timezone.now() - timedelta(hours=2)  # last 24 hours
+        deleted, _ = BusLocation.objects.filter(bus__owner=request.user, last_updated__gte=cutoff).delete()
+
+        return JsonResponse({'status': 'success', 'deleted': deleted, 'message': 'Deleted data from last 24 hours'})
+
     except Exception as e:
         return JsonResponse({'error': str(e)}, status=500)
-
 
 # ============= Admin Routes List =============
 
