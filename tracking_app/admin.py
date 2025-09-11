@@ -30,4 +30,4 @@ class UserLocationAdmin(admin.ModelAdmin):
     search_fields = ("user__username", "session_id")
     list_filter = ("last_updated",)
 
-# Register your models here.
+
