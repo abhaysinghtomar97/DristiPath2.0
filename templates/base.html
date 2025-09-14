@@ -5,33 +5,102 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>{% block title %}Real-Time Public Transport Tracking{% endblock %}</title>
   <style>
-    html {
-  scroll-behavior: smooth;
-}
-    body{
-     background: url("https://i.postimg.cc/Xqp26zXc/hero-img.png") no-repeat center center/cover;
-      color: #612a2a;
-      line-height: 1.6;
-      position: relative;
-      min-height: 100vh;
+    
+    :root {
+      --primary:#2c3e50; 
+      --accent:#3498db; 
+      --hover:#2980b9;
+      --bg:#f5f7fb;
     }
-    :root { --primary:#2c3e50; --accent:#3498db; --bg:#f5f7fb; }
-    *{ box-sizing:border-box; }
-    body { margin:0; font-family: Arial, sans-serif; background: var(--bg); color:#111; }
-    .navbar { 
-      background:var(--primary); 
-      color:#fff; 
-      padding:20px 18px; 
-      display:flex; 
-      justify-content:space-between; 
-      align-items:center; 
-      box-shadow:0 2px 6px rgba(0,0,0,0.12); 
+    *{ box-sizing:border-box; margin:0; padding:0; }
+    body { font-family: Arial, sans-serif; background: var(--bg); color:#111; }
+
+    /* Navbar */
+    .navbar {
+      background:var(--primary);
+      color:#fff;
+      padding:16px 20px;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      box-shadow:0 2px 6px rgba(0,0,0,0.12);
+      position:fixed;
+      width:100%;
+      top:0;
+      z-index:1000;
+      transition:top 0.4s ease;
     }
-    .brand { font-weight:700; font-family:Futura,__Noto_Sans_455659, __Noto_Sans_Fallback_455659, sans-serif; font-weight:400px; font-size:16px ; line-height:26px;}
-    .nav-links { display:flex; gap:10px; align-items:center; }
-    .nav-link { color:#fff; text-decoration:none; padding:6px 10px; border-radius:6px; background: rgba(255,255,255,0.12); }
-    .nav-link:hover { background: rgba(255,255,255,0.2); }
-    .container { max-width: 1200px; margin:0 auto; padding: 20px; }
+    .brand {
+      font-weight:700;
+      font-size:18px;
+    }
+
+    /* Links */
+    .nav-links {
+      display:flex;
+      gap:15px;
+      align-items:center;
+    }
+    .nav-link {
+      color:#fff;
+      text-decoration:none;
+      padding:8px 14px;
+      border-radius:6px;
+      transition: all 0.3s ease;
+    }
+    .nav-link:hover {
+      background:var(--hover);
+      transform: translateY(-2px);
+    }
+
+    /* Hamburger */
+    .hamburger {
+      display:none;
+      flex-direction:column;
+      cursor:pointer;
+      gap:5px;
+    }
+    .hamburger span {
+      width:25px;
+      height:3px;
+      background:white;
+      border-radius:2px;
+      transition:0.4s;
+    }
+    .hamburger.active span:nth-child(1){
+      transform:rotate(45deg) translate(5px,5px);
+    }
+    .hamburger.active span:nth-child(2){
+      opacity:0;
+    }
+    .hamburger.active span:nth-child(3){
+      transform:rotate(-45deg) translate(6px,-6px);
+    }
+
+    /* Mobile menu */
+    @media(max-width:768px){
+      .nav-links {
+        position:absolute;
+        top:64px;
+        right:0;
+        background:var(--primary);
+        flex-direction:column;
+        width:200px;
+        padding:15px;
+        display:none;
+        border-radius:0 0 0 8px;
+      }
+      .nav-links.active {
+        display:flex;
+        animation:slideDown 0.4s ease forwards;
+      }
+      @keyframes slideDown {
+        from {opacity:0; transform:translateY(-10px);}
+        to {opacity:1; transform:translateY(0);}
+      }
+      .hamburger { display:flex; }
+    }
+
   </style>
   {% block head_extra %}{% endblock %}
   <script src="https://unpkg.com/heroicons@2.0.18/dist/heroicons.js"></script>
@@ -39,20 +108,69 @@
 </head>
 <body>
   
-  <div class="navbar">
+  <div class="navbar" id="navbar">
     <div class="brand">DristiPath</div>
-    <div class="nav-links">
+    <div class="nav-links" id="nav-links">
       <a class="nav-link" href="/">Home</a>
       <a class="nav-link" href="/select/">Login/Register</a>
       <a class="nav-link" href="/user/">Nearest Bus</a>
       <a class="nav-link" href="#features">About</a>
-      <button id="nav-theme-toggle" class="nav-link" style="border: none; cursor: pointer; display: none;">🌙</button>
+    </div>
+    <div class="hamburger" id="hamburger">
+      <span></span>
+      <span></span>
+      <span></span>
     </div>
   </div>
 
-  {% block content %} {% endblock %}
+  
+    {% block content %} {% endblock %}
+ 
+
+  <script>
+    // Hamburger toggle
+    const hamburger = document.getElementById("hamburger");
+    const navLinks = document.getElementById("nav-links");
+    
+    // Function to close mobile menu
+    function closeMobileMenu() {
+      hamburger.classList.remove("active");
+      navLinks.classList.remove("active");
+    }
+
+    // Toggle menu on hamburger click
+    hamburger.addEventListener("click", (e) => {
+      e.stopPropagation();  // Prevent click from bubbling to document
+      hamburger.classList.toggle("active");
+      navLinks.classList.toggle("active");
+    });
+
+    // Close menu when clicking anywhere outside
+    document.addEventListener("click", (e) => {
+      if (!navLinks.contains(e.target) && !hamburger.contains(e.target)) {
+        closeMobileMenu();
+      }
+    });
+
+    // Close menu when clicking a nav link
+    navLinks.querySelectorAll(".nav-link").forEach(link => {
+      link.addEventListener("click", closeMobileMenu);
+    });
+
+    // Hide navbar on scroll down, show on scroll up
+    let lastScrollTop = 0;
+    const navbar = document.getElementById("navbar");
+    window.addEventListener("scroll", () => {
+      let scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      if (scrollTop > lastScrollTop) {
+        navbar.style.top = "-80px"; // hide
+      } else {
+        navbar.style.top = "0"; // show
+      }
+      lastScrollTop = scrollTop <= 0 ? 0 : scrollTop;
+    });
+  </script>
 
   {% block scripts %}{% endblock %}
 </body>
 </html>
-

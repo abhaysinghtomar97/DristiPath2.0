@@ -50,38 +50,36 @@
     overflow-x: hidden;
   }
 
-  /* Navigation */
+  /* Navigation - Only override colors and specific styles */
   .navbar {
     background: var(--surface);
     border-bottom: 1px solid var(--border);
     box-shadow: var(--shadow);
-    position: sticky;
-    top: 0;
-    z-index: 100;
   }
 
   .navbar .brand {
     color: var(--text-primary);
-    font-weight: 700;
-    font-size: 18px;
-  }
-
-  .navbar .nav-links {
-    display: flex;
-    gap: 8px;
-    align-items: center;
   }
 
   .navbar .nav-link {
     color: var(--text-secondary);
-    padding: 8px 16px;
     border-radius: 8px;
-    transition: all 0.2s ease;
   }
 
   .navbar .nav-link:hover {
     background: var(--accent-primary);
     color: white;
+  }
+
+  /* Preserve mobile menu functionality */
+  @media(max-width: 768px) {
+    .nav-links {
+      background: var(--surface) !important;
+    }
+    
+    .hamburger span {
+      background: var(--text-primary) !important;
+    }
   }
 
   /* Main Dashboard Layout */
@@ -566,6 +564,7 @@
   }
 
   @media (max-width: 768px) {
+    
     .dashboard {
       grid-template-columns: 1fr;
       grid-template-rows: auto auto 1fr;
