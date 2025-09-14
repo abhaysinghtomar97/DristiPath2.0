@@ -3,6 +3,7 @@
 {% block head_extra %}
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
+
   /* Modern Variables */
   :root {
     --primary: #1e40af;
@@ -48,7 +49,7 @@
     overflow-x: hidden;
   }
 
-  /* Navigation Override */
+ 
   .navbar {
     border-radius:80px;
       position:fixed; 
@@ -64,6 +65,7 @@
       
       backdrop-filter: blur(4px); 
   }
+  
   .brand {
     font-weight: 800;
     font-size: 24px;
@@ -322,6 +324,26 @@
 
   /* Responsive Design */
   @media (max-width: 768px) {
+    .nav-links {
+      display: none;
+    }
+
+    .mobile-menu {
+      display: block;
+    }
+
+    .hero-title {
+      font-size: 2.5rem;
+     
+    }
+
+    .hero-subtitle {
+      font-size: 1.1rem;
+    }
+
+    .navbar {
+      padding: 16px 20px;
+    }
     .selection-cards {
       grid-template-columns: 1fr;
       max-width: 400px;
@@ -352,6 +374,7 @@
       margin-bottom: 16px;
     }
   }
+  
 </style>
 {% endblock %}
 {% block content %}

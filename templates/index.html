@@ -525,6 +525,125 @@
   .stagger-2 { animation-delay: 0.2s; }
   .stagger-3 { animation-delay: 0.3s; }
   .stagger-4 { animation-delay: 0.4s; }
+
+  {% comment %} solution section {% endcomment %}
+
+.our-solution {
+  padding: 60px 20px;
+  font-family: 'Segoe UI', sans-serif;
+  color: #fff;
+  background: linear-gradient(135deg, #1e3c72, #2a5298, #4facfe, #00f2fe);
+  background-size: 300% 300%;
+  animation: gradientFlow 15s ease infinite;
+}
+
+@keyframes gradientFlow {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.solution-container {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 40px;
+  max-width: 1200px;
+  margin: 0 auto;
+  flex-wrap: wrap;
+}
+
+.solution-text {
+  flex: 1;
+  min-width: 320px;
+}
+
+.solution-text .experience {
+  color: #ffcc00;
+  font-weight: bold;
+  margin-bottom: 8px;
+}
+
+.solution-text h2 {
+  font-size: 36px;
+  margin-bottom: 16px;
+  color: #fff;
+}
+
+.solution-text .description {
+  color: #eaeaea;
+  line-height: 1.6;
+  margin-bottom: 30px;
+}
+
+.services {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 25px;
+}
+
+.service-item {
+  background: rgba(255,255,255,0.08);
+  border-radius: 12px;
+  padding: 20px 10px;
+  text-align: center;
+  transition: all 0.4s ease;
+  cursor: pointer;
+}
+
+.service-item img {
+  width: 50px;
+  height: 50px;
+  margin-bottom: 10px;
+  transition: transform 0.3s ease;
+}
+
+.service-item p {
+  font-size: 14px;
+  font-weight: 500;
+  color: #fff;
+  margin: 0;
+}
+
+/* Hover Effects */
+.service-item:hover {
+  background: rgba(255,255,255,0.15);
+  transform: translateY(-6px) scale(1.05);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.2);
+}
+.service-item:hover img {
+  transform: scale(1.2) rotate(5deg);
+}
+.service-item:hover p {
+  color: #ffcc00;
+}
+
+/* Right Video Section */
+.solution-media {
+  flex: 1;
+  min-width: 320px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.3);
+}
+
+.video-wrapper {
+  position: relative;
+  width: 100%;
+  padding-top: 56.25%; /* 16:9 ratio */
+}
+
+.video-wrapper video {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 16px;
+}
 </style>
 {% endblock %}
 
@@ -540,17 +659,50 @@
   </div>
 </section>
 
-<!-- How DrishtiPath Helps Section -->
-<section aria-labelledby="how-works-heading" class="how-works-section" style="background: var(--gray-50); padding: 64px 0 32px 0;">
-  <div class="section-container" style="max-width: 900px; margin: 0 auto; padding: 0 24px;">
-    <h2 id="how-works-heading" class="section-title fade-in" style="font-size:2.2rem; font-weight:700; color:var(--primary); text-align:center; margin-bottom: 12px;">
-      See How DrishtiPath Works
-    </h2>
-    <p class="fade-in stagger-1" style="text-align:center; color:var(--gray-600); font-size:1.1rem; margin-bottom:32px;">
-      Experience seamless, real-time public transport tracking in action. Watch this quick demo to see how DrishtiPath makes your commute smarter and easier.
-    </p>
-    <div class="fade-in stagger-2" style="display:flex; justify-content:center; align-items:center;">
-      <video 
+<!-- Our Solution Section -->
+<section class="our-solution">
+  <div class="solution-container">
+    <!-- Left Content -->
+    <div class="solution-text">
+      <p class="experience">Experience Smarter Commutes</p>
+      <h2>Our Solution</h2>
+      <p class="description">
+        At <strong>DristiPath</strong>, we revolutionize daily travel with real-time public transportation tracking.  
+        Our platform ensures you know exactly where your bus is, reduces waiting time, and makes your journey stress-free.
+      </p>
+
+      <div class="services">
+        <div class="service-item">
+          <img src="https://cdn-icons-png.flaticon.com/512/3083/3083410.png" alt="Live Bus Tracking">
+          <p>Live Bus Tracking</p>
+        </div>
+        <div class="service-item">
+          <img src="https://cdn-icons-png.flaticon.com/512/2920/2920211.png" alt="Arrival Predictions">
+          <p>Arrival Time Predictions</p>
+        </div>
+        <div class="service-item">
+          <img src="https://cdn-icons-png.flaticon.com/512/1946/1946406.png" alt="Passenger Safety">
+          <p>Passenger Safety Alerts</p>
+        </div>
+        <div class="service-item">
+          <img src="https://cdn-icons-png.flaticon.com/512/684/684908.png" alt="Multi-City Support">
+          <p>Multi-City Coverage</p>
+        </div>
+        <div class="service-item">
+          <img src="https://cdn-icons-png.flaticon.com/512/3079/3079186.png" alt="Smart Notifications">
+          <p>Smart Notifications</p>
+        </div>
+        <div class="service-item">
+          <img src="https://cdn-icons-png.flaticon.com/512/1250/1250620.png" alt="Eco-Friendly Commute">
+          <p>Eco-Friendly Commute</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right Video Background -->
+    <div class="solution-media">
+      <div class="video-wrapper">
+        <video 
         src="{% static 'videos/demo.mp4' %}" 
         autoplay 
         loop 
@@ -564,9 +716,11 @@
         Sorry, your browser does not support embedded videos. Here is a 
         <a href="{% static 'videos/demo.mp4' %}">link to the video</a> instead.
       </video>
+      </div>
     </div>
   </div>
 </section>
+
 
 
 <!-- Features Section -->
