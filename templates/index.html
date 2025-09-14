@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 {% block title %}DristiPath — Smart Transportation & Logistics{% endblock %}
 {% block head_extra %}
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -528,6 +529,7 @@
 {% endblock %}
 
 {% block content %}
+
 <!-- Hero Section -->
 <section class="hero">
   <div class="hero-overlay"></div>
@@ -537,6 +539,35 @@
     <button class="track-now-btn fade-in stagger-2" onclick="location.href='/select/'">Track Now</button>
   </div>
 </section>
+
+<!-- How DrishtiPath Helps Section -->
+<section aria-labelledby="how-works-heading" class="how-works-section" style="background: var(--gray-50); padding: 64px 0 32px 0;">
+  <div class="section-container" style="max-width: 900px; margin: 0 auto; padding: 0 24px;">
+    <h2 id="how-works-heading" class="section-title fade-in" style="font-size:2.2rem; font-weight:700; color:var(--primary); text-align:center; margin-bottom: 12px;">
+      See How DrishtiPath Works
+    </h2>
+    <p class="fade-in stagger-1" style="text-align:center; color:var(--gray-600); font-size:1.1rem; margin-bottom:32px;">
+      Experience seamless, real-time public transport tracking in action. Watch this quick demo to see how DrishtiPath makes your commute smarter and easier.
+    </p>
+    <div class="fade-in stagger-2" style="display:flex; justify-content:center; align-items:center;">
+      <video 
+        src="{% static 'videos/demo.mp4' %}" 
+        autoplay 
+        loop 
+        muted 
+        playsinline
+        preload="auto"
+        style="width:100%; max-width:700px; border-radius:16px; box-shadow:0 6px 32px rgba(30,64,175,0.10); background:var(--gray-200);"
+        aria-label="Demo video showing how DrishtiPath works"
+        poster="{% static 'videos/demo-poster.jpg' %}"
+      >
+        Sorry, your browser does not support embedded videos. Here is a 
+        <a href="{% static 'videos/demo.mp4' %}">link to the video</a> instead.
+      </video>
+    </div>
+  </div>
+</section>
+
 
 <!-- Features Section -->
 <section id="features" class="features-section">
