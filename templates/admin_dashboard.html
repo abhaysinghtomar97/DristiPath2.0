@@ -113,7 +113,8 @@
       <div class="navsec">
         <h4>Menu</h4>
         <div class="nav">
-          <a class="primary" href="#">Overview</a>
+          <a class="primary" href="#" onclick="showSection('overview')">Overview</a>
+          <button onclick="showSection('alter-schedule')">📅 Alter Schedule</button>
           <button onclick="document.getElementById('add-bus-form').scrollIntoView({behavior:'smooth'})">Add Vehicle</button>
           <button onclick="openModal()">Add Route</button>
           <button onclick="loadStats()">Update Stats</button>
@@ -136,7 +137,7 @@
     <main>
       <div class="topbar">
         <div style="display:flex; align-items:center; gap: 10px;">
-          <div style="font-weight:700; font-size:16px;">Overview</div>
+          <div style="font-weight:700; font-size:16px;" id="section-title">Overview</div>
           <div class="kpi"><span class="dot" style="background:var(--accent)"></span> Live</div>
         </div>
         <div class="search">
@@ -145,99 +146,156 @@
         </div>
       </div>
 
-      <section class="cards">
-        <div class="card"><p class="stat-title">Total Vehicles</p><div class="stat-value" id="total-buses">-</div></div>
-        <div class="card"><p class="stat-title">Active Vehicles</p><div class="stat-value" id="active-buses">-</div></div>
-        <div class="card"><p class="stat-title">Routes</p><div class="stat-value" id="total-routes">-</div></div>
-        <div class="card"><p class="stat-title">Updates (24h)</p><div class="stat-value" id="updates-24h">-</div></div>
-      </section>
+      <!-- Overview Section -->
+      <div id="overview-section">
+        <section class="cards">
+          <div class="card"><p class="stat-title">Total Vehicles</p><div class="stat-value" id="total-buses">-</div></div>
+          <div class="card"><p class="stat-title">Active Vehicles</p><div class="stat-value" id="active-buses">-</div></div>
+          <div class="card"><p class="stat-title">Routes</p><div class="stat-value" id="total-routes">-</div></div>
+          <div class="card"><p class="stat-title">Updates (24h)</p><div class="stat-value" id="updates-24h">-</div></div>
+        </section>
 
-      <section class="content-grid">
-        <div class="panel">
-          <h3>Vehicle Management</h3>
-          <div id="buses-list">
-            <div style="text-align:center; padding: 20px; color: var(--muted);">Loading vehicles...</div>
+        <section class="content-grid">
+          <div class="panel">
+            <h3>Vehicle Management</h3>
+            <div id="buses-list">
+              <div style="text-align:center; padding: 20px; color: var(--muted);">Loading vehicles...</div>
+            </div>
           </div>
-        </div>
+          <div class="panel">
+            <h3>Top Carriers</h3>
+            <div style="display:flex; align-items:center; gap: 14px;">
+              <div style="width: 200px; height: 200px;">
+                <canvas id="vehiclePie" width="200" height="200"></canvas>
+              </div>
+              <div>
+                <div class="kpi"><span class="dot" style="background:#22c55e"></span> Bus</div>
+                <div class="kpi"><span class="dot" style="background:#38bdf8"></span> Metro</div>
+                <div class="kpi"><span class="dot" style="background:#f472b6"></span> Tram</div>
+                <div class="kpi"><span class="dot" style="background:#f59e0b"></span> Train</div>
+                <div class="kpi"><span class="dot" style="background:#a3e635"></span> Ferry</div>
+                <div style="margin-top:10px; color:var(--muted); font-size:12px;">Per-admin distribution</div>
+              </div>
+            </div>
+            <div class="donut-legend" id="vehicleLegend"></div>
+            <div style="margin-top:10px; display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:8px;">
+              <div class="card" style="padding:10px;"><p class="stat-title">Updates (1h)</p><div class="stat-value" id="updates-1h">-</div></div>
+              <div class="card" style="padding:10px;"><p class="stat-title">Active (3m)</p><div class="stat-value" id="active-recent">-</div></div>
+              <div class="card" style="padding:10px;"><p class="stat-title">Locations</p><div class="stat-value" id="total-locs">-</div></div>
+            </div>
+          </div>
+        </section>
+
         <div class="panel">
-          <h3>Top Carriers</h3>
-          <div style="display:flex; align-items:center; gap: 14px;">
-            <div style="width: 200px; height: 200px;">
-              <canvas id="vehiclePie" width="200" height="200"></canvas>
+          <h3>Analytics</h3>
+          <div style="display:grid; gap: 14px;">
+            <div>
+              <h4 style="margin:0 0 6px 0;">Route Breakdown</h4>
+              <div id="route-breakdown" class="info-list"></div>
             </div>
             <div>
-              <div class="kpi"><span class="dot" style="background:#22c55e"></span> Bus</div>
-              <div class="kpi"><span class="dot" style="background:#38bdf8"></span> Metro</div>
-              <div class="kpi"><span class="dot" style="background:#f472b6"></span> Tram</div>
-              <div class="kpi"><span class="dot" style="background:#f59e0b"></span> Train</div>
-              <div class="kpi"><span class="dot" style="background:#a3e635"></span> Ferry</div>
-              <div style="margin-top:10px; color:var(--muted); font-size:12px;">Per-admin distribution</div>
+              <h4 style="margin:0 0 6px 0;">Recent Activity</h4>
+              <div id="recent-activity" class="info-list"></div>
             </div>
           </div>
-          <div class="donut-legend" id="vehicleLegend"></div>
-          <div style="margin-top:10px; display:grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap:8px;">
-            <div class="card" style="padding:10px;"><p class="stat-title">Updates (1h)</p><div class="stat-value" id="updates-1h">-</div></div>
-            <div class="card" style="padding:10px;"><p class="stat-title">Active (3m)</p><div class="stat-value" id="active-recent">-</div></div>
-            <div class="card" style="padding:10px;"><p class="stat-title">Locations</p><div class="stat-value" id="total-locs">-</div></div>
-          </div>
         </div>
-      </section>
 
-      <div class="panel">
-        <h3>Analytics</h3>
-        <div style="display:grid; gap: 14px;">
-          <div>
-            <h4 style="margin:0 0 6px 0;">Route Breakdown</h4>
-            <div id="route-breakdown" class="info-list"></div>
-          </div>
-          <div>
-            <h4 style="margin:0 0 6px 0;">Recent Activity</h4>
-            <div id="recent-activity" class="info-list"></div>
-          </div>
+        <div class="panel">
+          <h3>Add New Vehicle</h3>
+          <form id="add-bus-form" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            <div class="form-group">
+              <label for="bus-id">Vehicle ID</label>
+              <input type="text" id="bus-id" name="bus_id" required placeholder="e.g., VEH-003">
+            </div>
+            <div class="form-group">
+              <label for="bus-number">Vehicle Number</label>
+              <input type="text" id="bus-number" name="bus_number" required placeholder="e.g., DL-123">
+            </div>
+            <div class="form-group">
+              <label for="vehicle-type">Type</label>
+              <select id="vehicle-type" name="vehicle_type">
+                <option value="bus">Bus</option>
+                <option value="metro">Metro</option>
+                <option value="tram">Tram</option>
+                <option value="train">Train</option>
+                <option value="ferry">Ferry</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="route-select">Route</label>
+              <select id="route-select" name="route_id" required>
+                <option value="">Loading routes...</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="driver-name">Driver Name</label>
+              <input type="text" id="driver-name" name="driver_name" placeholder="Optional">
+            </div>
+            <div class="form-group">
+              <label for="capacity">Capacity</label>
+              <input type="number" id="capacity" name="capacity" value="50" min="1">
+            </div>
+            <div class="form-group" style="display: flex; align-items: end;">
+              <button type="submit">Add Vehicle</button>
+            </div>
+          </form>
         </div>
       </div>
 
-      <div class="panel">
-        <h3>Add New Vehicle</h3>
-        <form id="add-bus-form" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-          <div class="form-group">
-            <label for="bus-id">Vehicle ID</label>
-            <input type="text" id="bus-id" name="bus_id" required placeholder="e.g., VEH-003">
-          </div>
-          <div class="form-group">
-            <label for="bus-number">Vehicle Number</label>
-            <input type="text" id="bus-number" name="bus_number" required placeholder="e.g., DL-123">
-          </div>
-          <div class="form-group">
-            <label for="vehicle-type">Type</label>
-            <select id="vehicle-type" name="vehicle_type">
-              <option value="bus">Bus</option>
-              <option value="metro">Metro</option>
-              <option value="tram">Tram</option>
-              <option value="train">Train</option>
-              <option value="ferry">Ferry</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="route-select">Route</label>
-            <select id="route-select" name="route_id" required>
-              <option value="">Loading routes...</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label for="driver-name">Driver Name</label>
-            <input type="text" id="driver-name" name="driver_name" placeholder="Optional">
-          </div>
-          <div class="form-group">
-            <label for="capacity">Capacity</label>
-            <input type="number" id="capacity" name="capacity" value="50" min="1">
-          </div>
-          <div class="form-group" style="display: flex; align-items: end;">
-            <button type="submit">Add Vehicle</button>
-          </div>
-        </form>
-      </div>
+      <!-- Dynamic Scheduling Section -->
+      <div id="alter-schedule-section" style="display: none;">
+        <section class="cards">
+          <div class="card"><p class="stat-title">Active Schedules</p><div class="stat-value" id="total-schedules">-</div></div>
+          <div class="card"><p class="stat-title">Exceptions</p><div class="stat-value" id="total-exceptions">-</div></div>
+          <div class="card"><p class="stat-title">Drivers</p><div class="stat-value" id="total-drivers">-</div></div>
+          <div class="card"><p class="stat-title">Current Active</p><div class="stat-value" id="current-active">-</div></div>
+        </section>
 
+        <section class="content-grid">
+          <div class="panel">
+            <h3>Current Active Schedules</h3>
+            <div id="current-schedules-list">
+              <div style="text-align:center; padding: 20px; color: var(--muted);">Loading current schedules...</div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>Quick Actions</h3>
+            <div style="display: grid; gap: 12px;">
+              <button onclick="openDriverModal()" style="width: 100%;">👤 Add Driver</button>
+              <button onclick="openScheduleModal()" style="width: 100%;">📅 Create Schedule</button>
+              <button onclick="openExceptionModal()" style="width: 100%;">⚠️ Add Exception</button>
+              <button onclick="loadSchedulingData()" style="width: 100%; background: var(--accent-2);">🔄 Refresh All</button>
+            </div>
+            
+            <div style="margin-top: 20px;">
+              <h4 style="margin: 0 0 10px 0;">Quick Stats</h4>
+              <div id="schedule-quick-stats" style="font-size: 13px; color: var(--muted);">Loading...</div>
+            </div>
+          </div>
+        </section>
+
+        <div class="content-grid">
+          <div class="panel">
+            <h3>All Schedules</h3>
+            <div id="schedules-list">
+              <div style="text-align:center; padding: 20px; color: var(--muted);">Loading schedules...</div>
+            </div>
+          </div>
+          <div class="panel">
+            <h3>Schedule Exceptions</h3>
+            <div id="exceptions-list">
+              <div style="text-align:center; padding: 20px; color: var(--muted);">Loading exceptions...</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <h3>Drivers Management</h3>
+          <div id="drivers-list">
+            <div style="text-align:center; padding: 20px; color: var(--muted);">Loading drivers...</div>
+          </div>
+        </div>
+      </div>
     </main>
   </div>
 
@@ -397,6 +455,7 @@
           <div>
             <div class="status ${bus.is_active ? 'active' : 'inactive'}">${bus.is_active ? 'ACTIVE' : 'INACTIVE'}</div>
             <button onclick="showVehicleProfile('${bus.bus_id}')" style="margin-top: 8px; font-size: 12px; padding: 5px 10px; background: var(--accent); color: white; border: none; border-radius: 6px; cursor: pointer;">View Profile</button>
+            <button onclick="showDynamicUpdateModal('${bus.bus_id}')" style="margin-top: 5px; font-size: 12px; padding: 5px 10px; background: var(--accent-2); color: white; border: none; border-radius: 6px; cursor: pointer;">🔧 Quick Update</button>
             <button onclick="toggleBusStatus('${bus.bus_id}', ${bus.is_active})" style="margin-top: 5px; font-size: 12px; padding: 5px 10px;">${bus.is_active ? 'Deactivate' : 'Activate'}</button>
           </div>
         </div>
@@ -533,6 +592,403 @@
     }
   }
 
+  // ============= Dynamic Bus Management Functions =============
+  
+  function showDynamicUpdateModal(busId) {
+    const bus = buses.find(b => b.bus_id === busId);
+    if (!bus) {
+      showNotification('Vehicle not found');
+      return;
+    }
+    
+    const modalHtml = `
+      <div class="modal" id="dynamic-update-modal" style="display: block;">
+        <div class="modal-content" style="max-width: 700px; margin: 3% auto;">
+          <span class="close" onclick="closeDynamicUpdateModal()">&times;</span>
+          <h3 style="color: var(--accent); margin-bottom: 20px;">🔧 Dynamic Vehicle Management</h3>
+          
+          <div style="margin-bottom: 20px; padding: 15px; background: var(--card); border-radius: 10px; border: 1px solid var(--border);">
+            <h4 style="margin: 0 0 10px 0;">Current Vehicle: ${bus.bus_number} (${bus.bus_id})</h4>
+            <p><strong>Current Route:</strong> ${bus.route_name || 'N/A'} (${bus.route_id || 'N/A'})</p>
+            <p><strong>Current Driver:</strong> ${bus.driver_name || 'N/A'}</p>
+            <p><strong>Driver Mobile:</strong> ${bus.driver_mobile || 'N/A'}</p>
+            <p><strong>Status:</strong> <span class="status ${bus.is_active ? 'active' : 'inactive'}">${bus.is_active ? 'ACTIVE' : 'INACTIVE'}</span></p>
+          </div>
+          
+          <form id="dynamic-update-form" style="display: grid; gap: 15px;">
+            <input type="hidden" name="bus_id" value="${bus.bus_id}">
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+              <div class="form-group">
+                <label for="update-status">Vehicle Status</label>
+                <select id="update-status" name="is_active">
+                  <option value="" disabled>Keep Current</option>
+                  <option value="true" ${bus.is_active ? 'selected' : ''}>Active</option>
+                  <option value="false" ${!bus.is_active ? 'selected' : ''}>Inactive</option>
+                </select>
+              </div>
+              
+              <div class="form-group">
+                <label for="update-route">New Route</label>
+                <select id="update-route" name="route_id">
+                  <option value="" disabled>Keep Current</option>
+                  ${routes.map(route => `<option value="${route.route_id}" ${bus.route_id === route.route_id ? 'selected' : ''}>${route.route_id} - ${route.name}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+              <div class="form-group">
+                <label for="update-driver-name">Driver Name</label>
+                <input type="text" id="update-driver-name" name="driver_name" value="${bus.driver_name || ''}" placeholder="Enter driver name">
+              </div>
+              
+              <div class="form-group">
+                <label for="update-driver-mobile">Driver Mobile</label>
+                <input type="text" id="update-driver-mobile" name="driver_mobile" value="${bus.driver_mobile || ''}" placeholder="Enter mobile number">
+              </div>
+            </div>
+            
+            <div style="margin-top: 20px; display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+              <button type="button" onclick="updateRouteOnly('${bus.bus_id}')" style="background: var(--accent-2);">Route Only</button>
+              <button type="button" onclick="updateDriverOnly('${bus.bus_id}')" style="background: var(--warning);">Driver Only</button>
+              <button type="submit" style="background: var(--accent);">Update All</button>
+            </div>
+            
+            <div style="margin-top: 10px; text-align: center;">
+              <button type="button" onclick="closeDynamicUpdateModal()" style="background: var(--muted); color: var(--text);">Cancel</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    document.getElementById('dynamic-update-form').addEventListener('submit', updateBusComprehensive);
+  }
+  
+  function closeDynamicUpdateModal() {
+    const modal = document.getElementById('dynamic-update-modal');
+    if (modal) {
+      modal.remove();
+    }
+  }
+  
+  async function updateRouteOnly(busId) {
+    const routeSelect = document.getElementById('update-route');
+    const newRouteId = routeSelect.value;
+    
+    if (!newRouteId) {
+      showNotification('Please select a route');
+      return;
+    }
+    
+    try {
+      const result = await fetchJSON('/api/admin/update_bus_route/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bus_id: busId, route_id: newRouteId })
+      });
+      
+      if (result.status === 'success') {
+        showNotification(`✅ Route updated: ${result.old_route_id || 'N/A'} → ${result.new_route_name}`);
+        closeDynamicUpdateModal();
+        loadBuses();
+        loadStats();
+      } else {
+        showNotification(`❌ Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error updating route:', error);
+      showNotification('❌ Network error while updating route');
+    }
+  }
+  
+  async function updateDriverOnly(busId) {
+    const driverName = document.getElementById('update-driver-name').value;
+    const driverMobile = document.getElementById('update-driver-mobile').value;
+    
+    try {
+      const result = await fetchJSON('/api/admin/update_bus_driver/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bus_id: busId, driver_name: driverName, driver_mobile: driverMobile })
+      });
+      
+      if (result.status === 'success') {
+        const oldDriver = result.old_driver.name || 'N/A';
+        const newDriver = result.new_driver.name || 'N/A';
+        showNotification(`✅ Driver updated: ${oldDriver} → ${newDriver}`);
+        closeDynamicUpdateModal();
+        loadBuses();
+        loadStats();
+      } else {
+        showNotification(`❌ Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error updating driver:', error);
+      showNotification('❌ Network error while updating driver');
+    }
+  }
+  
+  async function updateBusComprehensive(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    
+    const payload = {};
+    payload.bus_id = formData.get('bus_id');
+    
+    // Only include fields that have values
+    const status = formData.get('is_active');
+    if (status && status !== '') {
+      payload.is_active = status === 'true';
+    }
+    
+    const routeId = formData.get('route_id');
+    if (routeId && routeId !== '') {
+      payload.route_id = routeId;
+    }
+    
+    const driverName = formData.get('driver_name');
+    if (driverName !== null) {
+      payload.driver_name = driverName;
+    }
+    
+    const driverMobile = formData.get('driver_mobile');
+    if (driverMobile !== null) {
+      payload.driver_mobile = driverMobile;
+    }
+    
+    try {
+      const result = await fetchJSON('/api/admin/update_bus_comprehensive/', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      
+      if (result.status === 'success') {
+        const updatedFields = result.updated_fields || [];
+        showNotification(`✅ ${result.message} (Updated: ${updatedFields.join(', ')})`);
+        closeDynamicUpdateModal();
+        loadBuses();
+        loadStats();
+      } else {
+        showNotification(`❌ Error: ${result.error}`);
+      }
+    } catch (error) {
+      console.error('Error updating vehicle:', error);
+      showNotification('❌ Network error while updating vehicle');
+    }
+  }
+
   function exportData(){ if (buses.length === 0) { showNotification('No data to export'); return; } const csv = [ ['Vehicle ID', 'Vehicle Number', 'Type', 'Route', 'Driver', 'Capacity', 'Status', 'Last Latitude', 'Last Longitude', 'Last Update'].join(','), ...buses.map(bus => [ bus.bus_id, bus.bus_number, bus.vehicle_type, bus.route_name || '', bus.driver_name || '', bus.capacity, bus.is_active ? 'Active' : 'Inactive', bus.current_location ? bus.current_location.latitude : '', bus.current_location ? bus.current_location.longitude : '', bus.current_location ? bus.current_location.last_updated : '' ].join(',')) ].join('\n'); const blob = new Blob([csv], { type: 'text/csv' }); const url = window.URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `vehicles_${new Date().toISOString().split('T')[0]}.csv`; a.click(); window.URL.revokeObjectURL(url); }
+
+  // ============= Section Switching Functions =============
+  
+  function showSection(sectionName) {
+    // Update navigation highlighting
+    document.querySelectorAll('.nav a, .nav button').forEach(el => {
+      el.classList.remove('primary');
+    });
+    
+    // Hide all sections
+    document.getElementById('overview-section').style.display = 'none';
+    document.getElementById('alter-schedule-section').style.display = 'none';
+    
+    // Show requested section and update title
+    if (sectionName === 'overview') {
+      document.getElementById('overview-section').style.display = 'block';
+      document.getElementById('section-title').textContent = 'Overview';
+      document.querySelector('.nav a[onclick*="overview"]').classList.add('primary');
+    } else if (sectionName === 'alter-schedule') {
+      document.getElementById('alter-schedule-section').style.display = 'block';
+      document.getElementById('section-title').textContent = 'Dynamic Scheduling';
+      document.querySelector('.nav button[onclick*="alter-schedule"]').classList.add('primary');
+      loadSchedulingData(); // Load scheduling data when section is shown
+    }
+  }
+
+  // ============= Scheduling Data Functions =============
+  
+  let drivers = [];
+  let schedules = [];
+  let exceptions = [];
+  let currentSchedules = [];
+
+  async function loadSchedulingData() {
+    try {
+      const [driversData, schedulesData, exceptionsData, currentData] = await Promise.all([
+        fetchJSON('/api/admin/list_drivers/'),
+        fetchJSON('/api/admin/list_schedules/'),
+        fetchJSON('/api/admin/list_schedule_exceptions/'),
+        fetchJSON('/api/admin/get_current_schedules/')
+      ]);
+      
+      if (driversData.status === 'success') {
+        drivers = driversData.drivers;
+        document.getElementById('total-drivers').textContent = drivers.length;
+        displayDrivers(drivers);
+      }
+      
+      if (schedulesData.status === 'success') {
+        schedules = schedulesData.schedules;
+        document.getElementById('total-schedules').textContent = schedules.length;
+        displaySchedules(schedules);
+      }
+      
+      if (exceptionsData.status === 'success') {
+        exceptions = exceptionsData.exceptions;
+        document.getElementById('total-exceptions').textContent = exceptions.length;
+        displayExceptions(exceptions);
+      }
+      
+      if (currentData.status === 'success') {
+        currentSchedules = currentData.current_schedules;
+        document.getElementById('current-active').textContent = currentSchedules.length;
+        displayCurrentSchedules(currentSchedules);
+        updateQuickStats();
+      }
+    } catch (error) {
+      console.error('Error loading scheduling data:', error);
+    }
+  }
+
+  function displayDrivers(driversList) {
+    const container = document.getElementById('drivers-list');
+    if (driversList.length === 0) {
+      container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--muted);">No drivers found. Click "Add Driver" to create one.</div>';
+      return;
+    }
+    
+    const html = driversList.map(driver => `
+      <div class="bus-item">
+        <div class="bus-details">
+          <h4>${driver.name} (${driver.driver_id})</h4>
+          <p><strong>Mobile:</strong> ${driver.mobile || 'N/A'}</p>
+          <p><strong>License:</strong> ${driver.license_number || 'N/A'}</p>
+          <p><strong>Email:</strong> ${driver.email || 'N/A'}</p>
+        </div>
+        <div>
+          <div class="status ${driver.is_active ? 'active' : 'inactive'}">${driver.is_active ? 'AVAILABLE' : 'INACTIVE'}</div>
+        </div>
+      </div>
+    `).join('');
+    
+    container.innerHTML = html;
+  }
+
+  function displaySchedules(schedulesList) {
+    const container = document.getElementById('schedules-list');
+    if (schedulesList.length === 0) {
+      container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--muted);">No schedules found. Click "Create Schedule" to add one.</div>';
+      return;
+    }
+    
+    const html = schedulesList.map(schedule => `
+      <div class="bus-item">
+        <div class="bus-details">
+          <h4>${schedule.name} (${schedule.schedule_id})</h4>
+          <p><strong>Bus:</strong> ${schedule.bus.bus_number} (${schedule.bus.bus_id})</p>
+          <p><strong>Route:</strong> ${schedule.route.name}</p>
+          <p><strong>Driver:</strong> ${schedule.driver ? schedule.driver.name : 'No driver assigned'}</p>
+          <p><strong>Time:</strong> ${schedule.start_time} - ${schedule.end_time}</p>
+          <p><strong>Days:</strong> ${schedule.weekdays_display}</p>
+          <p><strong>Valid:</strong> ${schedule.effective_from} ${schedule.effective_to ? 'to ' + schedule.effective_to : '(ongoing)'}</p>
+        </div>
+        <div>
+          <div class="status ${schedule.is_active_now ? 'active' : 'inactive'}">${schedule.is_active_now ? 'ACTIVE NOW' : 'SCHEDULED'}</div>
+          <div class="status" style="margin-top: 5px; font-size: 10px; padding: 4px 8px;">Priority: ${schedule.priority}</div>
+        </div>
+      </div>
+    `).join('');
+    
+    container.innerHTML = html;
+  }
+
+  function displayExceptions(exceptionsList) {
+    const container = document.getElementById('exceptions-list');
+    if (exceptionsList.length === 0) {
+      container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--muted);">No exceptions found.</div>';
+      return;
+    }
+    
+    const html = exceptionsList.map(exception => `
+      <div class="bus-item">
+        <div class="bus-details">
+          <h4>${exception.bus.bus_number} - ${exception.exception_date}</h4>
+          <p><strong>Type:</strong> ${exception.exception_type_display}</p>
+          <p><strong>Reason:</strong> ${exception.reason || 'N/A'}</p>
+          ${exception.override_route ? `<p><strong>Override Route:</strong> ${exception.override_route.name}</p>` : ''}
+          ${exception.override_driver ? `<p><strong>Override Driver:</strong> ${exception.override_driver.name}</p>` : ''}
+        </div>
+        <div>
+          <div class="status ${exception.is_active ? 'active' : 'inactive'}">${exception.is_active ? 'ACTIVE' : 'INACTIVE'}</div>
+        </div>
+      </div>
+    `).join('');
+    
+    container.innerHTML = html;
+  }
+
+  function displayCurrentSchedules(currentList) {
+    const container = document.getElementById('current-schedules-list');
+    if (currentList.length === 0) {
+      container.innerHTML = '<div style="text-align: center; padding: 20px; color: var(--muted);">No active schedules right now.</div>';
+      return;
+    }
+    
+    const html = currentList.map(item => {
+      const driverInfo = item.driver || item.driver_static || {};
+      return `
+        <div class="bus-item">
+          <div class="bus-details">
+            <h4>${item.bus_number} (${item.bus_id})</h4>
+            <p><strong>Route:</strong> ${item.route ? item.route.name : 'N/A'}</p>
+            <p><strong>Driver:</strong> ${driverInfo.name || 'N/A'}</p>
+            <p><strong>Type:</strong> ${item.schedule_type}</p>
+            ${driverInfo.mobile ? `<p><strong>Contact:</strong> <a href="tel:${driverInfo.mobile}" style="color: var(--accent);">${driverInfo.mobile} 📞</a></p>` : ''}
+          </div>
+          <div>
+            <div class="status active">ACTIVE NOW</div>
+          </div>
+        </div>
+      `;
+    }).join('');
+    
+    container.innerHTML = html;
+  }
+
+  function updateQuickStats() {
+    const statsContainer = document.getElementById('schedule-quick-stats');
+    const activeSchedules = schedules.filter(s => s.is_active_now).length;
+    const todayExceptions = exceptions.filter(e => {
+      const today = new Date().toISOString().split('T')[0];
+      return e.exception_date === today && e.is_active;
+    }).length;
+    
+    statsContainer.innerHTML = `
+      <p>• Active right now: ${activeSchedules} schedules</p>
+      <p>• Today's exceptions: ${todayExceptions}</p>
+      <p>• Total drivers: ${drivers.length}</p>
+      <p>• Live assignments: ${currentSchedules.length}</p>
+    `;
+  }
+
+  // ============= Modal Functions for Scheduling =============
+  
+  function openDriverModal() {
+    showNotification('Driver management modal coming soon! For now, you can add drivers via the API.');
+    // TODO: Implement driver modal
+  }
+  
+  function openScheduleModal() {
+    showNotification('Schedule creation modal coming soon! For now, you can create schedules via the API.');
+    // TODO: Implement schedule modal
+  }
+  
+  function openExceptionModal() {
+    showNotification('Exception management modal coming soon! For now, you can add exceptions via the API.');
+    // TODO: Implement exception modal
+  }
 </script>
 {% endblock %}

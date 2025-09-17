@@ -11,8 +11,8 @@ from datetime import timedelta
 import json
 import uuid
 from math import cos, radians
-from .models import BusLocation, Bus, Route, UserLocation, BusStop
-from .location_utils import get_location_name, get_route_display_name
+from .models import BusLocation, Bus, Route, UserLocation, BusStop, Driver, Schedule, ScheduleException
+from .location_utils import get_location_name, get_route_display_name, invalidate_user_cache
 
 # Create your views here.
 
@@ -633,6 +633,181 @@ def admin_toggle_bus_status(request):
 
 @csrf_exempt
 @require_http_methods(["POST"])
+def admin_update_bus_route(request):
+    """Dynamically change bus route assignment without interrupting service."""
+    try:
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
+        
+        data = json.loads(request.body)
+        bus_id = data.get('bus_id')
+        new_route_id = data.get('route_id')
+        
+        if not bus_id or not new_route_id:
+            return JsonResponse({'error': 'bus_id and route_id are required'}, status=400)
+        
+        # Get the bus
+        try:
+            bus = Bus.objects.get(owner=request.user, bus_id=bus_id)
+        except Bus.DoesNotExist:
+            return JsonResponse({'error': 'Vehicle not found for this admin'}, status=404)
+        
+        # Get the new route
+        try:
+            new_route = Route.objects.get(owner=request.user, route_id=new_route_id)
+        except Route.DoesNotExist:
+            return JsonResponse({'error': 'Route not found for this admin'}, status=404)
+        
+        # Store old route for response
+        old_route_id = bus.route.route_id if bus.route else None
+        
+        # Update bus route
+        bus.route = new_route
+        bus.save(update_fields=['route'])
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Bus route updated successfully',
+            'bus_id': bus.bus_id,
+            'old_route_id': old_route_id,
+            'new_route_id': new_route.route_id,
+            'new_route_name': new_route.name
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def admin_update_bus_driver(request):
+    """Dynamically change bus driver assignment."""
+    try:
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
+        
+        data = json.loads(request.body)
+        bus_id = data.get('bus_id')
+        driver_name = data.get('driver_name', '')
+        driver_mobile = data.get('driver_mobile', '')
+        
+        if not bus_id:
+            return JsonResponse({'error': 'bus_id is required'}, status=400)
+        
+        # Get the bus
+        try:
+            bus = Bus.objects.get(owner=request.user, bus_id=bus_id)
+        except Bus.DoesNotExist:
+            return JsonResponse({'error': 'Vehicle not found for this admin'}, status=404)
+        
+        # Store old driver info for response
+        old_driver_name = bus.driver_name
+        old_driver_mobile = bus.driver_mobile
+        
+        # Update bus driver info
+        bus.driver_name = driver_name
+        bus.driver_mobile = driver_mobile
+        bus.save(update_fields=['driver_name', 'driver_mobile'])
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Bus driver updated successfully',
+            'bus_id': bus.bus_id,
+            'old_driver': {
+                'name': old_driver_name,
+                'mobile': old_driver_mobile
+            },
+            'new_driver': {
+                'name': driver_name,
+                'mobile': driver_mobile
+            }
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def admin_update_bus_comprehensive(request):
+    """Comprehensive bus update: status, route, and driver in one atomic operation."""
+    try:
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
+        
+        data = json.loads(request.body)
+        bus_id = data.get('bus_id')
+        
+        if not bus_id:
+            return JsonResponse({'error': 'bus_id is required'}, status=400)
+        
+        # Get the bus
+        try:
+            bus = Bus.objects.get(owner=request.user, bus_id=bus_id)
+        except Bus.DoesNotExist:
+            return JsonResponse({'error': 'Vehicle not found for this admin'}, status=404)
+        
+        # Store old values for response
+        old_values = {
+            'is_active': bus.is_active,
+            'route_id': bus.route.route_id if bus.route else None,
+            'driver_name': bus.driver_name,
+            'driver_mobile': bus.driver_mobile
+        }
+        
+        updates = []
+        new_values = {}
+        
+        # Handle status change
+        if 'is_active' in data:
+            bus.is_active = bool(data['is_active'])
+            updates.append('is_active')
+            new_values['is_active'] = bus.is_active
+        
+        # Handle route change
+        if 'route_id' in data:
+            try:
+                new_route = Route.objects.get(owner=request.user, route_id=data['route_id'])
+                bus.route = new_route
+                updates.append('route')
+                new_values['route_id'] = new_route.route_id
+                new_values['route_name'] = new_route.name
+            except Route.DoesNotExist:
+                return JsonResponse({'error': 'Route not found for this admin'}, status=404)
+        
+        # Handle driver changes
+        if 'driver_name' in data:
+            bus.driver_name = data.get('driver_name', '')
+            updates.append('driver_name')
+            new_values['driver_name'] = bus.driver_name
+        
+        if 'driver_mobile' in data:
+            bus.driver_mobile = data.get('driver_mobile', '')
+            updates.append('driver_mobile')
+            new_values['driver_mobile'] = bus.driver_mobile
+        
+        # Save changes atomically
+        if updates:
+            bus.save(update_fields=updates)
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': f'Bus updated successfully ({len(updates)} fields changed)',
+            'bus_id': bus.bus_id,
+            'updated_fields': updates,
+            'old_values': old_values,
+            'new_values': new_values
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
 def admin_add_route(request):
     """Create a new route owned by the current admin."""
     try:
@@ -825,3 +1000,546 @@ def admin_dashboard(request):
 
 def serve_debug_test(request):
     return render(request, 'debug_test.html')
+
+# ============= Dynamic Scheduling APIs =============
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def admin_add_driver(request):
+    """Add a new driver"""
+    try:
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
+        
+        data = json.loads(request.body)
+        driver_id = data.get('driver_id')
+        name = data.get('name')
+        mobile = data.get('mobile', '')
+        license_number = data.get('license_number', '')
+        email = data.get('email', '')
+        
+        if not driver_id or not name:
+            return JsonResponse({'error': 'Driver ID and name are required'}, status=400)
+        
+        # Create driver scoped to owner
+        driver, created = Driver.objects.get_or_create(
+            owner=request.user,
+            driver_id=driver_id,
+            defaults={
+                'name': name,
+                'mobile': mobile,
+                'license_number': license_number,
+                'email': email,
+                'is_active': True,
+            }
+        )
+        
+        if not created:
+            return JsonResponse({'error': 'Driver with this ID already exists'}, status=400)
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Driver added successfully',
+            'driver': {
+                'driver_id': driver.driver_id,
+                'name': driver.name,
+                'mobile': driver.mobile,
+                'license_number': driver.license_number,
+                'email': driver.email,
+            }
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@require_http_methods(["GET"])
+def admin_list_drivers(request):
+    """List all drivers owned by current admin"""
+    try:
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
+        
+        drivers = Driver.objects.filter(owner=request.user, is_active=True)
+        
+        drivers_data = [{
+            'id': driver.id,
+            'driver_id': driver.driver_id,
+            'name': driver.name,
+            'mobile': driver.mobile,
+            'license_number': driver.license_number,
+            'email': driver.email,
+            'is_active': driver.is_active,
+            'created_at': driver.created_at.isoformat(),
+        } for driver in drivers]
+        
+        return JsonResponse({
+            'status': 'success',
+            'drivers': drivers_data,
+            'count': len(drivers_data)
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def admin_add_schedule(request):
+    """Create a new dynamic schedule"""
+    try:
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
+        
+        data = json.loads(request.body)
+        schedule_id = data.get('schedule_id')
+        name = data.get('name')
+        bus_id = data.get('bus_id')
+        route_id = data.get('route_id')
+        driver_id = data.get('driver_id')  # Optional
+        start_time = data.get('start_time')
+        end_time = data.get('end_time')
+        days_of_week = data.get('days_of_week', [])
+        effective_from = data.get('effective_from')
+        effective_to = data.get('effective_to')  # Optional
+        priority = data.get('priority', 1)
+        
+        # Validate required fields
+        if not all([schedule_id, name, bus_id, route_id, start_time, end_time, effective_from]):
+            return JsonResponse({'error': 'Missing required fields'}, status=400)
+        
+        # Validate bus belongs to admin
+        try:
+            bus = Bus.objects.get(owner=request.user, bus_id=bus_id)
+        except Bus.DoesNotExist:
+            return JsonResponse({'error': 'Bus not found for this admin'}, status=404)
+        
+        # Validate route belongs to admin
+        try:
+            route = Route.objects.get(owner=request.user, route_id=route_id)
+        except Route.DoesNotExist:
+            return JsonResponse({'error': 'Route not found for this admin'}, status=404)
+        
+        # Validate driver if provided
+        driver = None
+        if driver_id:
+            try:
+                driver = Driver.objects.get(owner=request.user, driver_id=driver_id)
+            except Driver.DoesNotExist:
+                return JsonResponse({'error': 'Driver not found for this admin'}, status=404)
+        
+        # Parse dates and times
+        from datetime import datetime, time, date
+        try:
+            start_time_obj = datetime.strptime(start_time, '%H:%M').time()
+            end_time_obj = datetime.strptime(end_time, '%H:%M').time()
+            effective_from_date = datetime.strptime(effective_from, '%Y-%m-%d').date()
+            effective_to_date = None
+            if effective_to:
+                effective_to_date = datetime.strptime(effective_to, '%Y-%m-%d').date()
+        except ValueError as e:
+            return JsonResponse({'error': f'Invalid date/time format: {str(e)}'}, status=400)
+        
+        # Check for schedule conflicts before creating
+        conflict_error = check_schedule_conflicts(
+            request.user, bus, driver, start_time_obj, end_time_obj, 
+            days_of_week, effective_from_date, effective_to_date
+        )
+        
+        if conflict_error:
+            return JsonResponse({'error': conflict_error}, status=400)
+        
+        # Create schedule
+        schedule, created = Schedule.objects.get_or_create(
+            owner=request.user,
+            schedule_id=schedule_id,
+            defaults={
+                'name': name,
+                'bus': bus,
+                'route': route,
+                'driver': driver,
+                'start_time': start_time_obj,
+                'end_time': end_time_obj,
+                'days_of_week': days_of_week,
+                'effective_from': effective_from_date,
+                'effective_to': effective_to_date,
+                'priority': priority,
+                'is_active': True,
+            }
+        )
+        
+        if not created:
+            return JsonResponse({'error': 'Schedule with this ID already exists'}, status=400)
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Schedule created successfully',
+            'schedule': {
+                'schedule_id': schedule.schedule_id,
+                'name': schedule.name,
+                'bus_id': schedule.bus.bus_id,
+                'route_id': schedule.route.route_id,
+                'driver_id': schedule.driver.driver_id if schedule.driver else None,
+                'start_time': schedule.start_time.strftime('%H:%M'),
+                'end_time': schedule.end_time.strftime('%H:%M'),
+                'days_of_week': schedule.days_of_week,
+                'effective_from': schedule.effective_from.isoformat(),
+                'effective_to': schedule.effective_to.isoformat() if schedule.effective_to else None,
+                'priority': schedule.priority,
+            }
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@require_http_methods(["GET"])
+def admin_list_schedules(request):
+    """List all schedules owned by current admin"""
+    try:
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
+        
+        schedules = Schedule.objects.filter(
+            owner=request.user
+        ).select_related('bus', 'route', 'driver')
+        
+        schedules_data = []
+        for schedule in schedules:
+            schedules_data.append({
+                'id': schedule.id,
+                'schedule_id': schedule.schedule_id,
+                'name': schedule.name,
+                'bus': {
+                    'bus_id': schedule.bus.bus_id,
+                    'bus_number': schedule.bus.bus_number,
+                    'vehicle_type': schedule.bus.vehicle_type,
+                },
+                'route': {
+                    'route_id': schedule.route.route_id,
+                    'name': schedule.route.name,
+                    'start_location': schedule.route.start_location,
+                    'end_location': schedule.route.end_location,
+                },
+                'driver': {
+                    'driver_id': schedule.driver.driver_id,
+                    'name': schedule.driver.name,
+                    'mobile': schedule.driver.mobile,
+                } if schedule.driver else None,
+                'start_time': schedule.start_time.strftime('%H:%M'),
+                'end_time': schedule.end_time.strftime('%H:%M'),
+                'days_of_week': schedule.days_of_week,
+                'weekdays_display': schedule.get_weekdays_display(),
+                'effective_from': schedule.effective_from.isoformat(),
+                'effective_to': schedule.effective_to.isoformat() if schedule.effective_to else None,
+                'priority': schedule.priority,
+                'is_active': schedule.is_active,
+                'is_active_now': schedule.is_active_now(),
+                'created_at': schedule.created_at.isoformat(),
+                'updated_at': schedule.updated_at.isoformat(),
+            })
+        
+        return JsonResponse({
+            'status': 'success',
+            'schedules': schedules_data,
+            'count': len(schedules_data)
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@csrf_exempt
+@require_http_methods(["POST"])
+def admin_add_schedule_exception(request):
+    """Add a schedule exception"""
+    try:
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
+        
+        data = json.loads(request.body)
+        bus_id = data.get('bus_id')
+        exception_date = data.get('exception_date')
+        exception_type = data.get('exception_type')
+        reason = data.get('reason', '')
+        
+        # Optional override values
+        override_route_id = data.get('override_route_id')
+        override_driver_id = data.get('override_driver_id')
+        override_start_time = data.get('override_start_time')
+        override_end_time = data.get('override_end_time')
+        
+        # Validate required fields
+        if not all([bus_id, exception_date, exception_type]):
+            return JsonResponse({'error': 'Missing required fields'}, status=400)
+        
+        # Validate bus belongs to admin
+        try:
+            bus = Bus.objects.get(owner=request.user, bus_id=bus_id)
+        except Bus.DoesNotExist:
+            return JsonResponse({'error': 'Bus not found for this admin'}, status=404)
+        
+        # Parse exception date
+        from datetime import datetime
+        try:
+            exception_date_obj = datetime.strptime(exception_date, '%Y-%m-%d').date()
+        except ValueError:
+            return JsonResponse({'error': 'Invalid date format. Use YYYY-MM-DD'}, status=400)
+        
+        # Validate override values if provided
+        override_route = None
+        override_driver = None
+        override_start_time_obj = None
+        override_end_time_obj = None
+        
+        if override_route_id:
+            try:
+                override_route = Route.objects.get(owner=request.user, route_id=override_route_id)
+            except Route.DoesNotExist:
+                return JsonResponse({'error': 'Override route not found'}, status=404)
+        
+        if override_driver_id:
+            try:
+                override_driver = Driver.objects.get(owner=request.user, driver_id=override_driver_id)
+            except Driver.DoesNotExist:
+                return JsonResponse({'error': 'Override driver not found'}, status=404)
+        
+        if override_start_time:
+            try:
+                override_start_time_obj = datetime.strptime(override_start_time, '%H:%M').time()
+            except ValueError:
+                return JsonResponse({'error': 'Invalid start time format. Use HH:MM'}, status=400)
+        
+        if override_end_time:
+            try:
+                override_end_time_obj = datetime.strptime(override_end_time, '%H:%M').time()
+            except ValueError:
+                return JsonResponse({'error': 'Invalid end time format. Use HH:MM'}, status=400)
+        
+        # Create exception
+        exception = ScheduleException.objects.create(
+            owner=request.user,
+            bus=bus,
+            exception_date=exception_date_obj,
+            exception_type=exception_type,
+            override_route=override_route,
+            override_driver=override_driver,
+            override_start_time=override_start_time_obj,
+            override_end_time=override_end_time_obj,
+            reason=reason,
+        )
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': 'Schedule exception created successfully',
+            'exception': {
+                'id': exception.id,
+                'bus_id': exception.bus.bus_id,
+                'exception_date': exception.exception_date.isoformat(),
+                'exception_type': exception.exception_type,
+                'reason': exception.reason,
+                'override_route_id': exception.override_route.route_id if exception.override_route else None,
+                'override_driver_id': exception.override_driver.driver_id if exception.override_driver else None,
+            }
+        })
+        
+    except json.JSONDecodeError:
+        return JsonResponse({'error': 'Invalid JSON data'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@require_http_methods(["GET"])
+def admin_list_schedule_exceptions(request):
+    """List schedule exceptions"""
+    try:
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
+        
+        exceptions = ScheduleException.objects.filter(
+            owner=request.user
+        ).select_related('bus', 'override_route', 'override_driver')
+        
+        exceptions_data = []
+        for exception in exceptions:
+            exceptions_data.append({
+                'id': exception.id,
+                'bus': {
+                    'bus_id': exception.bus.bus_id,
+                    'bus_number': exception.bus.bus_number,
+                },
+                'exception_date': exception.exception_date.isoformat(),
+                'exception_type': exception.exception_type,
+                'exception_type_display': exception.get_exception_type_display(),
+                'reason': exception.reason,
+                'override_route': {
+                    'route_id': exception.override_route.route_id,
+                    'name': exception.override_route.name,
+                } if exception.override_route else None,
+                'override_driver': {
+                    'driver_id': exception.override_driver.driver_id,
+                    'name': exception.override_driver.name,
+                } if exception.override_driver else None,
+                'override_start_time': exception.override_start_time.strftime('%H:%M') if exception.override_start_time else None,
+                'override_end_time': exception.override_end_time.strftime('%H:%M') if exception.override_end_time else None,
+                'is_active': exception.is_active,
+                'created_at': exception.created_at.isoformat(),
+            })
+        
+        return JsonResponse({
+            'status': 'success',
+            'exceptions': exceptions_data,
+            'count': len(exceptions_data)
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+@require_http_methods(["GET"])
+def admin_get_current_schedules(request):
+    """Get current active schedules for all buses"""
+    try:
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return JsonResponse({'error': 'Access denied. Admin privileges required.'}, status=403)
+        
+        buses = Bus.objects.filter(owner=request.user, is_active=True)
+        
+        current_schedules = []
+        for bus in buses:
+            current_schedule = bus.get_current_schedule()
+            if current_schedule:
+                schedule_data = {
+                    'bus_id': bus.bus_id,
+                    'bus_number': bus.bus_number,
+                    'schedule_type': current_schedule['type'],
+                    'route': {
+                        'route_id': current_schedule['route'].route_id,
+                        'name': current_schedule['route'].name,
+                    } if current_schedule['route'] else None,
+                }
+                
+                if current_schedule['type'] == 'schedule' and current_schedule.get('driver'):
+                    schedule_data['driver'] = {
+                        'driver_id': current_schedule['driver'].driver_id,
+                        'name': current_schedule['driver'].name,
+                        'mobile': current_schedule['driver'].mobile,
+                    }
+                elif current_schedule['type'] == 'static':
+                    driver_info = bus.get_effective_driver_info()
+                    schedule_data['driver_static'] = {
+                        'name': driver_info.get('name', ''),
+                        'mobile': driver_info.get('mobile', ''),
+                    }
+                
+                current_schedules.append(schedule_data)
+        
+        return JsonResponse({
+            'status': 'success',
+            'current_schedules': current_schedules,
+            'count': len(current_schedules),
+            'generated_at': timezone.now().isoformat(),
+        })
+        
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def check_schedule_conflicts(user, bus, driver, start_time, end_time, days_of_week, effective_from, effective_to):
+    """
+    Check for schedule conflicts between buses and drivers.
+    Returns an error message if conflicts are found, None otherwise.
+    """
+    from django.db.models import Q
+    from datetime import date
+    
+    # If no effective_to date provided, set a far future date for comparison
+    if effective_to is None:
+        from datetime import date
+        effective_to = date(2099, 12, 31)
+    
+    # Create a list of weekday numbers from the days_of_week list
+    # Assume days_of_week is a list like ['monday', 'tuesday', ...] or [0, 1, 2, ...]
+    if days_of_week:
+        # Convert text days to numbers if needed
+        day_mapping = {
+            'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
+            'friday': 4, 'saturday': 5, 'sunday': 6
+        }
+        
+        weekday_numbers = []
+        for day in days_of_week:
+            if isinstance(day, str):
+                weekday_numbers.append(day_mapping.get(day.lower()))
+            else:
+                weekday_numbers.append(day)
+        # Remove None values in case of invalid day names
+        weekday_numbers = [d for d in weekday_numbers if d is not None]
+    else:
+        weekday_numbers = []
+    
+    # Build base query for overlapping schedules within the same time period
+    base_query = Q(
+        owner=user,
+        is_active=True,
+        # Date range overlap check
+        effective_from__lte=effective_to,
+        effective_to__gte=effective_from  # This handles None effective_to by using the far future date
+    )
+    
+    # Add time overlap check
+    time_overlap_query = Q(
+        # Time ranges overlap if: start1 < end2 AND start2 < end1
+        start_time__lt=end_time,
+        end_time__gt=start_time
+    )
+    
+    # Check for common days overlap
+    if weekday_numbers:
+        # Use JSON field lookup to check for overlapping days
+        days_overlap_query = Q()
+        for day_num in weekday_numbers:
+            days_overlap_query |= Q(days_of_week__contains=[day_num])
+    else:
+        # If no specific days, assume it conflicts with all schedules
+        days_overlap_query = Q()
+    
+    # Check for bus conflicts
+    bus_conflicts = Schedule.objects.filter(
+        base_query & time_overlap_query & Q(bus=bus)
+    )
+    
+    if weekday_numbers:
+        bus_conflicts = bus_conflicts.filter(days_overlap_query)
+    
+    if bus_conflicts.exists():
+        conflicting_schedule = bus_conflicts.first()
+        return f"Bus {bus.bus_id} is already scheduled during this time in schedule '{conflicting_schedule.name}'"
+    
+    # Check for driver conflicts (if driver is provided)
+    if driver:
+        driver_conflicts = Schedule.objects.filter(
+            base_query & time_overlap_query & Q(driver=driver)
+        )
+        
+        if weekday_numbers:
+            driver_conflicts = driver_conflicts.filter(days_overlap_query)
+        
+        if driver_conflicts.exists():
+            conflicting_schedule = driver_conflicts.first()
+            return f"Driver {driver.name} is already scheduled during this time in schedule '{conflicting_schedule.name}'"
+    
+    # Additional validation: Check for schedule exceptions that might conflict
+    # This is a simplified check - you might want to make it more sophisticated
+    exception_conflicts = ScheduleException.objects.filter(
+        owner=user,
+        is_active=True,
+        bus=bus,
+        exception_date__gte=effective_from,
+        exception_date__lte=effective_to,
+        exception_type='cancelled'
+    )
+    
+    if exception_conflicts.exists():
+        # This is informational rather than blocking
+        pass  # Could add warning logic here
+    
+    # No conflicts found
+    return None

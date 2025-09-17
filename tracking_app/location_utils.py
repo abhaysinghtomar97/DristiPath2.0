@@ -1,6 +1,11 @@
 # Location utilities for human-readable location names
 import requests
 from django.conf import settings
+from django.core.cache import cache
+from django.utils import timezone
+from datetime import timedelta
+import hashlib
+import json
 
 # Predefined location mappings for common coordinates
 PREDEFINED_LOCATIONS = {
@@ -176,3 +181,181 @@ def add_predefined_location(latitude, longitude, name):
     Add a new predefined location mapping (for admin use).
     """
     PREDEFINED_LOCATIONS[(latitude, longitude)] = name
+
+# ============= Caching Functions for Performance =============
+
+def get_cache_key(prefix, *args):
+    """
+    Generate a consistent cache key from prefix and arguments.
+    """
+    key_data = f"{prefix}:{'_'.join(map(str, args))}"
+    # Hash long keys to avoid cache key length limits
+    if len(key_data) > 200:
+        key_data = hashlib.md5(key_data.encode()).hexdigest()
+    return key_data
+
+def cache_route_data(user_id, timeout=300):
+    """
+    Cache route data for a specific admin user to speed up lookups.
+    Default timeout: 5 minutes.
+    """
+    cache_key = get_cache_key('admin_routes', user_id)
+    
+    try:
+        from .models import Route
+        routes = Route.objects.filter(owner_id=user_id, is_active=True).values(
+            'id', 'route_id', 'name', 'start_location', 'end_location', 'description'
+        )
+        route_list = list(routes)
+        cache.set(cache_key, route_list, timeout)
+        return route_list
+    except Exception as e:
+        print(f"Error caching route data: {e}")
+        return []
+
+def get_cached_routes(user_id):
+    """
+    Get cached route data for admin user, or fetch and cache if not available.
+    """
+    cache_key = get_cache_key('admin_routes', user_id)
+    routes = cache.get(cache_key)
+    
+    if routes is None:
+        routes = cache_route_data(user_id)
+    
+    return routes
+
+def cache_driver_data(user_id, timeout=300):
+    """
+    Cache driver data for a specific admin user to speed up lookups.
+    Default timeout: 5 minutes.
+    """
+    cache_key = get_cache_key('admin_drivers', user_id)
+    
+    try:
+        from .models import Driver
+        drivers = Driver.objects.filter(owner_id=user_id, is_active=True).values(
+            'id', 'driver_id', 'name', 'mobile', 'license_number', 'email'
+        )
+        driver_list = list(drivers)
+        cache.set(cache_key, driver_list, timeout)
+        return driver_list
+    except Exception as e:
+        print(f"Error caching driver data: {e}")
+        return []
+
+def get_cached_drivers(user_id):
+    """
+    Get cached driver data for admin user, or fetch and cache if not available.
+    """
+    cache_key = get_cache_key('admin_drivers', user_id)
+    drivers = cache.get(cache_key)
+    
+    if drivers is None:
+        drivers = cache_driver_data(user_id)
+    
+    return drivers
+
+def cache_bus_data(user_id, timeout=60):
+    """
+    Cache bus data for a specific admin user.
+    Shorter timeout (1 minute) since bus data changes more frequently.
+    """
+    cache_key = get_cache_key('admin_buses', user_id)
+    
+    try:
+        from .models import Bus
+        buses = Bus.objects.filter(owner_id=user_id).select_related('route').values(
+            'id', 'bus_id', 'bus_number', 'vehicle_type', 'capacity', 'is_active',
+            'driver_name', 'driver_mobile', 'route__route_id', 'route__name'
+        )
+        bus_list = list(buses)
+        cache.set(cache_key, bus_list, timeout)
+        return bus_list
+    except Exception as e:
+        print(f"Error caching bus data: {e}")
+        return []
+
+def get_cached_buses(user_id):
+    """
+    Get cached bus data for admin user, or fetch and cache if not available.
+    """
+    cache_key = get_cache_key('admin_buses', user_id)
+    buses = cache.get(cache_key)
+    
+    if buses is None:
+        buses = cache_bus_data(user_id)
+    
+    return buses
+
+def invalidate_user_cache(user_id, cache_types=None):
+    """
+    Invalidate cached data for a user.
+    
+    Args:
+        user_id: User ID to invalidate cache for
+        cache_types: List of cache types to invalidate. If None, invalidates all.
+                    Options: ['routes', 'drivers', 'buses']
+    """
+    if cache_types is None:
+        cache_types = ['routes', 'drivers', 'buses']
+    
+    cache_keys = []
+    if 'routes' in cache_types:
+        cache_keys.append(get_cache_key('admin_routes', user_id))
+    if 'drivers' in cache_types:
+        cache_keys.append(get_cache_key('admin_drivers', user_id))
+    if 'buses' in cache_types:
+        cache_keys.append(get_cache_key('admin_buses', user_id))
+    
+    cache.delete_many(cache_keys)
+
+def cache_location_lookup(latitude, longitude, location_name, timeout=3600):
+    """
+    Cache location lookup results to avoid repeated reverse geocoding.
+    Default timeout: 1 hour.
+    """
+    cache_key = get_cache_key('location', round(latitude, 4), round(longitude, 4))
+    cache.set(cache_key, location_name, timeout)
+
+def get_cached_location(latitude, longitude):
+    """
+    Get cached location name or None if not cached.
+    """
+    cache_key = get_cache_key('location', round(latitude, 4), round(longitude, 4))
+    return cache.get(cache_key)
+
+def cached_reverse_geocode(latitude, longitude):
+    """
+    Cached version of reverse geocoding.
+    """
+    # Check cache first
+    cached_result = get_cached_location(latitude, longitude)
+    if cached_result:
+        return cached_result
+    
+    # Perform geocoding
+    result = reverse_geocode(latitude, longitude)
+    
+    # Cache the result
+    cache_location_lookup(latitude, longitude, result)
+    
+    return result
+
+def get_cached_location_name(latitude, longitude, accuracy_threshold=0.01):
+    """
+    Cached version of get_location_name function.
+    """
+    try:
+        # Check predefined locations first (these don't need caching)
+        for (pred_lat, pred_lng), name in PREDEFINED_LOCATIONS.items():
+            distance = ((latitude - pred_lat) ** 2 + (longitude - pred_lng) ** 2) ** 0.5
+            if distance <= accuracy_threshold:
+                return name
+        
+        # Use cached reverse geocoding
+        return cached_reverse_geocode(latitude, longitude)
+        
+    except Exception as e:
+        print(f"Error getting cached location name: {e}")
+        return f"{latitude:.4f}, {longitude:.4f}"
