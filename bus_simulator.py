@@ -5,6 +5,12 @@ import random
 import math
 from datetime import datetime
 from threading import Thread
+import sys
+import os
+
+# Import GPS configuration
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from gps_config import USE_SIMULATOR, get_current_gps_mode, get_gps_source_info
 
 # Enhanced bus routes with more realistic city coverage
 BUS_ROUTES = {
@@ -272,5 +278,23 @@ class BusSimulator:
             return False
 
 if __name__ == "__main__":
+    # Check GPS configuration
+    gps_mode = get_current_gps_mode()
+    gps_info = get_gps_source_info()
+    
+    print(f"🔧 GPS Mode: {gps_mode}")
+    print(f"📋 Description: {gps_info.get('description', 'Unknown')}")
+    
+    if not USE_SIMULATOR:
+        print("\n⚠️  SIMULATOR MODE IS DISABLED")
+        print("Current configuration is set to use MOBILE GPS mode.")
+        print("\nTo enable simulator mode:")
+        print("1. Open gps_config.py")
+        print("2. Set USE_SIMULATOR = True")
+        print("3. Run this script again")
+        print("\nOr run mobile_gps_sender.py for mobile GPS mode.")
+        sys.exit(1)
+    
+    print("\n🚌 Starting Bus Simulator...")
     simulator = BusSimulator()
     simulator.simulate_movement()

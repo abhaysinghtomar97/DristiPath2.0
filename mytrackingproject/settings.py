@@ -4,6 +4,8 @@ Django settings for mytrackingproject project.
 
 import os
 import environ
+# Firebase envs (optional)
+FIREBASE_STORAGE_BUCKET = os.environ.get("FIREBASE_STORAGE_BUCKET", "")
 from pathlib import Path
 import dj_database_url
 
@@ -45,7 +47,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'tracking_app',
+    'tracking_app.apps.TrackingAppConfig',
     'corsheaders',  # <- required for CORS
 ]
 

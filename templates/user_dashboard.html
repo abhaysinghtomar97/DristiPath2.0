@@ -574,6 +574,7 @@
     
     .controls-panel {
       padding: 16px;
+      margin-top: 50px;
     }
     
     .control-button {
@@ -684,34 +685,57 @@
   let routePolyline = null; // For route highlighting
   let currentActiveButton = null;
 
-  // Initialize Google Maps
-  function initMap() {
+  // Initialize Google Maps - FIXED: No recursion
+  function initGoogleMap() {
     if (initialized) return;
-    initialized = true;
     
-    map = new google.maps.Map(document.getElementById("map"), {
-      zoom: 11,
-      center: { lat: 28.6139, lng: 77.2090 },
-      mapTypeId: google.maps.MapTypeId.ROADMAP,
-      styles: [
-        {
-          featureType: "poi",
-          elementType: "labels",
-          stylers: [{ visibility: "off" }]
-        },
-        {
-          featureType: "transit",
-          elementType: "labels",
-          stylers: [{ visibility: "simplified" }]
-        }
-      ],
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: true
-    });
+    const mapElement = document.getElementById("map");
+    if (!mapElement) {
+      console.error('❌ Map container not found!');
+      return;
+    }
     
-    loadInitialData();
+    if (typeof google === 'undefined' || !google.maps) {
+      console.error('❌ Google Maps API not loaded properly');
+      initSimpleMap();
+      return;
+    }
+    
+    try {
+      initialized = true;
+      console.log('🗺️ Google Map initialized successfully');
+      
+      map = new google.maps.Map(mapElement, {
+        zoom: 11,
+        center: { lat: 28.6139, lng: 77.2090 },
+        mapTypeId: google.maps.MapTypeId.ROADMAP,
+        styles: [
+          {
+            featureType: "poi",
+            elementType: "labels",
+            stylers: [{ visibility: "off" }]
+          },
+          {
+            featureType: "transit",
+            elementType: "labels",
+            stylers: [{ visibility: "simplified" }]
+          }
+        ],
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: true
+      });
+      
+      loadInitialData();
+    } catch (error) {
+      console.error('❌ Google Maps initialization failed:', error);
+      initialized = false;
+      initSimpleMap();
+    }
   }
+  
+  // Make initGoogleMap globally accessible for Google Maps callback
+  window.initGoogleMap = initGoogleMap;
 
   // Canvas map fallback
   let ctx;
@@ -719,9 +743,16 @@
   
   function initSimpleMap() {
     if (initialized) return;
-    initialized = true;
     
     const mapEl = document.getElementById('map');
+    if (!mapEl) {
+      console.error('❌ Map container not found for canvas fallback!');
+      return;
+    }
+    
+    initialized = true;
+    console.log('🗺️ Canvas map initialized successfully');
+    
     mapEl.innerHTML = '<canvas id="mapCanvas"></canvas>';
     const canvas = document.getElementById('mapCanvas');
     
@@ -1264,11 +1295,11 @@
         userMarker = new google.maps.Marker({
           position: { lat, lng },
           map,
-          title: 'Your Location',
+          title: 'Your Location (Not a Bus)',
           icon: {
             url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
               `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="10" fill="#10b981" stroke="#ffffff" stroke-width="2"/>
+                <circle cx="12" cy="12" r="10" fill="#ef4444" stroke="#ffffff" stroke-width="2"/>
                 <text x="12" y="16" text-anchor="middle" fill="white" font-family="Arial" font-size="8" font-weight="bold">📍</text>
               </svg>`
             ),
@@ -1295,21 +1326,29 @@
   }
 
   function updateGoogleMapMarkers(locations, isDelayed = false) {
-    // Clear existing markers
+    // Clear existing markers (but preserve user marker)
     Object.values(markers).forEach(marker => marker.setMap(null));
     Object.values(infoWindows).forEach(iw => iw.close());
     markers = {};
     infoWindows = {};
     
-    // Add new markers
+    // Add new markers - ALL vehicles including mobile GPS buses
     locations.forEach(vehicle => {
       const position = { lat: vehicle.latitude, lng: vehicle.longitude };
-      const iconColor = isDelayed ? '#f59e0b' : '#3b82f6';
+      
+      // 🚀 Special handling for mobile GPS buses
+      const isMobileGPS = vehicle.bus_id && vehicle.bus_id.includes('MOBILE-BUS');
+      let iconColor = isDelayed ? '#f59e0b' : '#3b82f6';
+      
+      // Use different color for mobile GPS buses
+      if (isMobileGPS) {
+        iconColor = '#10b981'; // Green for mobile GPS
+      }
       
       markers[vehicle.bus_id] = new google.maps.Marker({
         position,
         map,
-        title: `${vehicle.bus_number} (${vehicle.bus_id})`,
+        title: `${vehicle.bus_number || vehicle.bus_id} ${isMobileGPS ? '(Mobile GPS)' : ''}`,
         icon: {
           url: 'data:image/svg+xml;charset=UTF-8,' + encodeURIComponent(
             `<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
@@ -1322,12 +1361,17 @@
         }
       });
       
+      // 🚀 Enhanced info window with mobile GPS indication
       const infoContent = `
         <div style="padding: 12px; max-width: 250px;">
-          <h4 style="margin: 0 0 8px 0; color: #1e293b; font-size: 16px;">${vehicle.bus_number} (${vehicle.bus_id})</h4>
-          <p style="margin: 4px 0; color: #64748b; font-size: 12px;"><strong>Route:</strong> ${vehicle.route_name || 'N/A'}</p>
+          <h4 style="margin: 0 0 8px 0; color: #1e293b; font-size: 16px;">
+            ${vehicle.bus_number || vehicle.bus_id}
+            ${isMobileGPS ? '<span style="color: #10b981; font-size: 12px;"> (Mobile GPS)</span>' : ''}
+          </h4>
+          <p style="margin: 4px 0; color: #64748b; font-size: 12px;"><strong>Route:</strong> ${vehicle.route_name || vehicle.route_display_name || 'Default Route'}</p>
           <p style="margin: 4px 0; color: #64748b; font-size: 12px;"><strong>Location:</strong> ${vehicle.latitude.toFixed(4)}, ${vehicle.longitude.toFixed(4)}</p>
           <p style="margin: 4px 0; color: #64748b; font-size: 12px;"><strong>Last Update:</strong> ${new Date(vehicle.last_updated).toLocaleTimeString()}</p>
+          ${isMobileGPS ? '<p style="margin: 4px 0; color: #10b981; font-size: 11px;"><strong>📱 Live Mobile GPS Data</strong></p>' : ''}
           <button style="margin-top: 8px; padding: 6px 12px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer;" onclick="showVehicleDetails('${vehicle.bus_id}')">
             View Details
           </button>
@@ -1349,8 +1393,18 @@
     
     locations.forEach((vehicle, index) => {
       const isHighlighted = vehicle.bus_id === highlightId;
-      const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
-      const color = isHighlighted ? '#f59e0b' : colors[index % colors.length];
+      const isMobileGPS = vehicle.bus_id && vehicle.bus_id.includes('MOBILE-BUS');
+      
+      let color;
+      if (isHighlighted) {
+        color = '#f59e0b'; // Orange for highlighted
+      } else if (isMobileGPS) {
+        color = '#10b981'; // Green for mobile GPS
+      } else {
+        const colors = ['#3b82f6', '#8b5cf6', '#ef4444', '#f59e0b'];
+        color = colors[index % colors.length];
+      }
+      
       drawVehicleMarker(vehicle, color, isHighlighted);
     });
     
@@ -1571,49 +1625,106 @@
   }
 
   // Event Handlers
-  window.onload = function() {
-    initTheme();
+  document.addEventListener('DOMContentLoaded', function() {
+    console.log('🚀 Initializing dashboard...');
     
-    // Control buttons
-    document.getElementById('btn-my-location').onclick = handleMyLocation;
-    document.getElementById('btn-find-nearest').onclick = handleFindNearest;
-    document.getElementById('btn-check-delays').onclick = handleCheckDelays;
-    document.getElementById('btn-search-bus').onclick = handleSearchBus;
-    
-    // Theme toggle
-    document.getElementById('theme-toggle').onclick = toggleTheme;
-    
-    // Search
-    document.getElementById('search-input').addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') handleSearch();
-    });
-    
-    // Route filter
-    document.getElementById('route-filter').addEventListener('change', handleRouteFilter);
-    
-    // Radius slider
-    const radiusSlider = document.getElementById('radius-slider');
-    if (radiusSlider) {
-      radiusSlider.addEventListener('input', updateRadiusDisplay);
-      updateRadiusDisplay();
+    try {
+      initTheme();
+      
+      // Control buttons
+      const btnMyLocation = document.getElementById('btn-my-location');
+      const btnFindNearest = document.getElementById('btn-find-nearest');
+      const btnCheckDelays = document.getElementById('btn-check-delays');
+      const btnSearchBus = document.getElementById('btn-search-bus');
+      const themeToggle = document.getElementById('theme-toggle');
+      
+      if (btnMyLocation) btnMyLocation.onclick = handleMyLocation;
+      if (btnFindNearest) btnFindNearest.onclick = handleFindNearest;
+      if (btnCheckDelays) btnCheckDelays.onclick = handleCheckDelays;
+      if (btnSearchBus) btnSearchBus.onclick = handleSearchBus;
+      if (themeToggle) themeToggle.onclick = toggleTheme;
+      
+      // Search
+      const searchInput = document.getElementById('search-input');
+      if (searchInput) {
+        searchInput.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') handleSearch();
+        });
+      }
+      
+      // Route filter
+      const routeFilter = document.getElementById('route-filter');
+      if (routeFilter) {
+        routeFilter.addEventListener('change', handleRouteFilter);
+      }
+      
+      // Radius slider
+      const radiusSlider = document.getElementById('radius-slider');
+      if (radiusSlider) {
+        radiusSlider.addEventListener('input', updateRadiusDisplay);
+        updateRadiusDisplay();
+      }
+      
+      // Initialize map after a short delay to ensure DOM is ready
+      // Check if map container exists
+      const mapContainer = document.getElementById('map');
+      if (!mapContainer) {
+        console.error('❌ Map container #map not found in DOM!');
+        return;
+      }
+      
+      // Initialize map after a delay
+      setTimeout(() => {
+        console.log('🔍 Checking Google Maps availability...');
+        console.log('Google object:', typeof google);
+        console.log('Map container:', mapContainer ? 'Found' : 'Not found');
+        
+        if (typeof google === 'undefined' || !google.maps) {
+          console.log('🗺️ Google Maps not available, using canvas map');
+          initSimpleMap();
+        } else {
+          console.log('🗺️ Google Maps available, initializing...');
+          initGoogleMap();
+        }
+      }, 2000); // Increased delay to 2 seconds
+      
+      console.log('✅ Dashboard initialized successfully!');
+    } catch (error) {
+      console.error('❌ Dashboard initialization error:', error);
     }
-    
-    // Initialize map
-    if (typeof google === 'undefined') {
-      initSimpleMap();
-    } else {
-      initMap();
-    }
-    
-    console.log('🚌 Transport Tracking Dashboard Loaded!');
-  };
+  });
   
   // Add missing function for route showing
   function showVehicleRoute(busId) {
     showVehicleDetails(busId);
   }
   
+  // Fallback initialization if DOMContentLoaded doesn't fire
+  if (document.readyState === 'loading') {
+    // Document still loading, wait for DOMContentLoaded
+  } else {
+    // Document already loaded, initialize immediately
+    setTimeout(() => {
+      if (!initialized) {
+        console.log('🔄 Fallback initialization');
+        document.dispatchEvent(new Event('DOMContentLoaded'));
+      }
+    }, 500);
+  }
+  
 </script>
-<script async defer src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDnOhQzKOIz6i3t_a0oK6K2d7bQ7BG2SFU&callback=initMap"></script>
+<!-- Google Maps API - Check if key is valid -->
+<script>
+  // Debug Google Maps loading
+  window.gm_authFailure = function() {
+    console.error('❌ Google Maps API key is invalid or expired');
+    console.log('🗺️ Falling back to canvas map');
+    if (!initialized) initSimpleMap();
+  };
+</script>
+<script async defer 
+  src="https://maps.googleapis.com/maps/api/js?key=AIzaSyDnOhQzKOIz6i3t_a0oK6K2d7bQ7BG2SFU&callback=initGoogleMap" 
+  onerror="console.error('❌ Google Maps script failed to load'); if (!initialized) initSimpleMap();">
+</script>
 {% endblock %}
 
