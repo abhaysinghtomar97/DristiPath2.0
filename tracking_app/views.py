@@ -1543,3 +1543,42 @@ def check_schedule_conflicts(user, bus, driver, start_time, end_time, days_of_we
     
     # No conflicts found
     return None
+
+
+    
+@csrf_exempt
+def device_update_location(request):
+    """
+    POST JSON: {"bus_id":"bus123","latitude":12.34,"longitude":56.78,"speed":40.2,"heading":180}
+    """
+    if request.method != "POST":
+        return JsonResponse({"detail": "only POST allowed"}, status=405)
+
+    try:
+        payload = json.loads(request.body)
+    except Exception:
+        return JsonResponse({"detail": "invalid json"}, status=400)
+
+    bus_id = payload.get("bus_id")
+    lat = payload.get("latitude")
+    lng = payload.get("longitude")
+    speed = payload.get("speed", 0.0)
+    heading = payload.get("heading", 0.0)
+
+    if not bus_id or lat is None or lng is None:
+        return JsonResponse({"detail": "missing fields"}, status=400)
+
+    try:
+        bus = Bus.objects.get(bus_id=bus_id)
+    except Bus.DoesNotExist:
+        return JsonResponse({"detail": "bus not found"}, status=404)
+
+    bl = BusLocation.objects.create(
+        bus=bus,
+        latitude=lat,
+        longitude=lng,
+        speed=speed,
+        heading=heading
+    )
+    # post_save signal will push to Firebase
+    return JsonResponse({"status": "ok", "id": bl.id})

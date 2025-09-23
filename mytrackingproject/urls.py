@@ -49,4 +49,5 @@ urlpatterns = [
     path('debug/', serve_debug_test, name='debug_test'),
     path('admin/', admin.site.urls),
     path('api/', include('tracking_app.urls')),
+    path("api/device/update-location/", tracking_views.device_update_location, name="device_update_location"),
 ]

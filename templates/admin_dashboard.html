@@ -85,7 +85,8 @@
 
   /* Modal */
   .modal { display: none; position: fixed; z-index: 1000; inset: 0; background-color: rgba(0,0,0,0.5); }
-  .modal-content { background: var(--panel); color: var(--text); margin: 10% auto; padding: 20px; border-radius: 12px; width: 520px; max-width: 92%; border:1px solid var(--border); }
+  .modal-content { background: var(--panel); color: var(--text); margin: 10% auto; padding: 20px; border-radius: 12px; width: 440px; max-width: 92%; border:1px solid var(--border); }
+    
   .close { color: var(--muted); float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
   .close:hover { color: var(--text); }
 
@@ -94,8 +95,39 @@
   .kpi { display:flex; align-items:center; gap: 8px; color: var(--muted); }
   .kpi .dot { width:10px; height:10px; border-radius:999px; }
 
+  /* Mobile Navigation Dropdown */
+  .mobile-nav-dropdown { position: relative; display: none; }
+  .nav-dropdown-toggle { display: flex; align-items: center; gap: 8px; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; cursor: pointer; color: var(--text); font-weight: 600; }
+  .nav-dropdown-toggle:hover { background: var(--card); }
+  .nav-dropdown-content { position: absolute; top: 100%; left: 0; right: 0; background: var(--panel); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); z-index: 1000; margin-top: 8px; max-height: 400px; overflow-y: auto; display: none; }
+  .nav-dropdown-content.active { display: block; }
+  .nav-dropdown-item { padding: 12px 16px; border-bottom: 1px solid var(--border); cursor: pointer; color: var(--text); font-size: 14px; }
+  .nav-dropdown-item:hover { background: var(--card); }
+  .nav-dropdown-item:last-child { border-bottom: none; }
+  .dropdown-arrow { transition: transform 0.3s ease; }
+  .dropdown-arrow.rotated { transform: rotate(180deg); }
+  
   /* Responsive */
-  @media (max-width: 1100px) {
+  @media (max-width: 768px) {
+    .shell { grid-template-columns: 1fr; padding: 10px; gap: 10px; }
+    .sidebar { display: none; }
+    .mobile-nav-dropdown { display: block; }
+    .topbar { flex-direction: column; gap: 10px; align-items: stretch; }
+    .search input { width: 200px; }
+    .content-grid { grid-template-columns: 1fr; }
+    .cards { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+    .modal-content { margin: 5% auto; width: 95%; }
+    .bus-item { flex-direction: column; align-items: flex-start; gap: 10px; }
+    .panel { padding: 12px; }
+  }
+  
+  @media (max-width: 480px) {
+    .cards { grid-template-columns: 1fr; gap: 8px; }
+    .card { padding: 12px; }
+    .stat-value { font-size: 20px; }
+  }
+  
+  @media (max-width: 1100px) and (min-width: 769px) {
     .shell { grid-template-columns: 1fr; }
     .sidebar { height: auto; position: static; }
     .content-grid { grid-template-columns: 1fr; }
@@ -104,18 +136,23 @@
 </style>
 {% endblock %}
 {% block content %}
+
+  
   <div class="shell" id="admin-shell">
-    <aside class="sidebar">
+    <aside class="sidebar" id="mobile-sidebar">
       <div class="brand-row">
         <div class="brand"><span class="dot"></span> <span>Admin Dashboard</span></div>
-        <button id="modeToggle" class="mode-toggle" title="Toggle theme">Dark</button>
+        <div style="display: flex; gap: 8px; align-items: center;">
+          <button class="mobile-close" onclick="closeMobileMenu()" style="display: none; background: none; border: none; font-size: 24px; padding: 5px; color: var(--muted);">&times;</button>
+          <button id="modeToggle" class="mode-toggle" title="Toggle theme">Dark</button>
+        </div>
       </div>
       <div class="navsec">
         <h4>Menu</h4>
         <div class="nav">
           <a class="primary" href="#" onclick="showSection('overview')">Overview</a>
           <button onclick="showSection('alter-schedule')">📅 Alter Schedule</button>
-          <button onclick="document.getElementById('add-bus-form').scrollIntoView({behavior:'smooth'})">Add Vehicle</button>
+          <button onclick="openVehicleModal()">Add Vehicle</button>
           <button onclick="openModal()">Add Route</button>
           <button onclick="loadStats()">Update Stats</button>
           <button onclick="loadBuses()">Refresh Vehicles</button>
@@ -140,6 +177,27 @@
           <div style="font-weight:700; font-size:16px;" id="section-title">Overview</div>
           <div class="kpi"><span class="dot" style="background:var(--accent)"></span> Live</div>
         </div>
+        
+        <div class="mobile-nav-dropdown">
+          <div class="nav-dropdown-toggle" onclick="toggleNavDropdown()">
+            <span>Menu</span>
+            <svg class="dropdown-arrow" width="16" height="16" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M7 10l5 5 5-5z"/>
+            </svg>
+          </div>
+          <div class="nav-dropdown-content" id="nav-dropdown">
+            <div class="nav-dropdown-item" onclick="showSection('overview'); closeNavDropdown();">Overview</div>
+            <div class="nav-dropdown-item" onclick="showSection('alter-schedule'); closeNavDropdown();">📅 Alter Schedule</div>
+            <div class="nav-dropdown-item" onclick="openVehicleModal(); closeNavDropdown();">Add Vehicle</div>
+            <div class="nav-dropdown-item" onclick="openModal(); closeNavDropdown();">Add Route</div>
+            <div class="nav-dropdown-item" onclick="loadStats(); closeNavDropdown();">Update Stats</div>
+            <div class="nav-dropdown-item" onclick="loadBuses(); closeNavDropdown();">Refresh Vehicles</div>
+            <div class="nav-dropdown-item" onclick="loadRoutes(); closeNavDropdown();">Refresh Routes</div>
+            <div class="nav-dropdown-item" onclick="clearOldLocations(); closeNavDropdown();">Clean Old Data</div>
+            <div class="nav-dropdown-item" onclick="exportData(); closeNavDropdown();">Export CSV</div>
+          </div>
+        </div>
+        
         <div class="search">
           <svg width="16" height="16" fill="currentColor" style="color:var(--muted)"><path d="M11.742 10.344a6.5 6.5 0 1 0-1.397 1.398l3.85 3.85a1 1 0 0 0 1.415-1.415l-3.868-3.833zM6.5 11A4.5 4.5 0 1 1 11 6.5 4.5 4.5 0 0 1 6.5 11z"/></svg>
           <input placeholder="Quick search" />
@@ -200,46 +258,7 @@
           </div>
         </div>
 
-        <div class="panel">
-          <h3>Add New Vehicle</h3>
-          <form id="add-bus-form" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-            <div class="form-group">
-              <label for="bus-id">Vehicle ID</label>
-              <input type="text" id="bus-id" name="bus_id" required placeholder="e.g., VEH-003">
-            </div>
-            <div class="form-group">
-              <label for="bus-number">Vehicle Number</label>
-              <input type="text" id="bus-number" name="bus_number" required placeholder="e.g., DL-123">
-            </div>
-            <div class="form-group">
-              <label for="vehicle-type">Type</label>
-              <select id="vehicle-type" name="vehicle_type">
-                <option value="bus">Bus</option>
-                <option value="metro">Metro</option>
-                <option value="tram">Tram</option>
-                <option value="train">Train</option>
-                <option value="ferry">Ferry</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="route-select">Route</label>
-              <select id="route-select" name="route_id" required>
-                <option value="">Loading routes...</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label for="driver-name">Driver Name</label>
-              <input type="text" id="driver-name" name="driver_name" placeholder="Optional">
-            </div>
-            <div class="form-group">
-              <label for="capacity">Capacity</label>
-              <input type="number" id="capacity" name="capacity" value="50" min="1">
-            </div>
-            <div class="form-group" style="display: flex; align-items: end;">
-              <button type="submit">Add Vehicle</button>
-            </div>
-          </form>
-        </div>
+
       </div>
 
       <!-- Dynamic Scheduling Section -->
@@ -325,6 +344,51 @@
           <input type="text" id="route-description" name="description" placeholder="Optional">
         </div>
         <button type="submit">Add Route</button>
+      </form>
+    </div>
+  </div>
+
+  <div id="vehicle-modal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeVehicleModal()">&times;</span>
+      <h3>Add New Vehicle</h3>
+      <form id="add-bus-form" style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+        <div class="form-group">
+          <label for="bus-id">Vehicle ID</label>
+          <input type="text" id="bus-id" name="bus_id" required placeholder="e.g., VEH-003">
+        </div>
+        <div class="form-group">
+          <label for="bus-number">Vehicle Number</label>
+          <input type="text" id="bus-number" name="bus_number" required placeholder="e.g., DL-123">
+        </div>
+        <div class="form-group">
+          <label for="vehicle-type">Type</label>
+          <select id="vehicle-type" name="vehicle_type">
+            <option value="bus">Bus</option>
+            <option value="metro">Metro</option>
+            <option value="tram">Tram</option>
+            <option value="train">Train</option>
+            <option value="ferry">Ferry</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="route-select">Route</label>
+          <select id="route-select" name="route_id" required>
+            <option value="">Loading routes...</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="driver-name">Driver Name</label>
+          <input type="text" id="driver-name" name="driver_name" placeholder="Optional">
+        </div>
+        <div class="form-group">
+          <label for="capacity">Capacity</label>
+          <input type="number" id="capacity" name="capacity" value="50" min="1">
+        </div>
+        <div class="form-group" style="grid-column: 1 / -1; display: flex; gap: 10px; justify-content: center;">
+          <button type="submit">Add Vehicle</button>
+          <button type="button" onclick="closeVehicleModal()" style="background: var(--muted);">Cancel</button>
+        </div>
       </form>
     </div>
   </div>
@@ -493,7 +557,7 @@
     event.preventDefault();
     const formData = new FormData(event.target);
     const payload = { bus_id: formData.get('bus_id'), bus_number: formData.get('bus_number'), route_id: formData.get('route_id'), driver_name: formData.get('driver_name'), capacity: parseInt(formData.get('capacity')), vehicle_type: formData.get('vehicle_type') };
-    try { const result = await fetchJSON('/api/admin/add_bus/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (result.status === 'success') { showNotification('Vehicle added successfully!'); event.target.reset(); loadBuses(); loadStats(); } else { showNotification(result.error || 'Failed to add vehicle'); } } catch (error) { console.error('Error adding vehicle:', error); showNotification('Network error while adding vehicle'); }
+    try { const result = await fetchJSON('/api/admin/add_bus/', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) }); if (result.status === 'success') { showNotification('Vehicle added successfully!'); event.target.reset(); closeVehicleModal(); loadBuses(); loadStats(); } else { showNotification(result.error || 'Failed to add vehicle'); } } catch (error) { console.error('Error adding vehicle:', error); showNotification('Network error while adding vehicle'); }
   }
 
   async function searchBuses(){ const query = document.getElementById('search-buses').value.trim(); if (!query) { displayBuses(buses); return; } try { const data = await fetchJSON(`/api/search_buses/?q=${encodeURIComponent(query)}`); if (data.status === 'success') { displayBuses(data.buses.map(b => ({ ...b, id: b.bus_id, is_active: true }))); } } catch (error) { console.error('Error searching vehicles:', error); } }
@@ -502,6 +566,9 @@
 
   function openModal(){ document.getElementById('route-modal').style.display = 'block'; }
   function closeModal(){ document.getElementById('route-modal').style.display = 'none'; }
+
+  function openVehicleModal(){ document.getElementById('vehicle-modal').style.display = 'block'; }
+  function closeVehicleModal(){ document.getElementById('vehicle-modal').style.display = 'none'; }
 
   async function addRoute(event){ event.preventDefault(); const fd = new FormData(event.target); const payload = { route_id: fd.get('route_id'), name: fd.get('name'), start_location: fd.get('start_location'), end_location: fd.get('end_location'), description: fd.get('description') }; try{ const res = await fetchJSON('/api/admin/add_route/', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(payload) }); if(res.status==='success'){ showNotification('Route added'); closeModal(); loadRoutes(); } else { showNotification(res.error || 'Failed to add route'); } }catch(e){ console.error(e); showNotification('Network error'); }
   }
@@ -990,5 +1057,30 @@
     showNotification('Exception management modal coming soon! For now, you can add exceptions via the API.');
     // TODO: Implement exception modal
   }
+  
+  // Mobile Navigation Dropdown Functions
+  function toggleNavDropdown() {
+    const dropdown = document.getElementById('nav-dropdown');
+    const arrow = document.querySelector('.dropdown-arrow');
+    
+    dropdown.classList.toggle('active');
+    arrow.classList.toggle('rotated');
+  }
+  
+  function closeNavDropdown() {
+    const dropdown = document.getElementById('nav-dropdown');
+    const arrow = document.querySelector('.dropdown-arrow');
+    
+    dropdown.classList.remove('active');
+    arrow.classList.remove('rotated');
+  }
+  
+  // Close dropdown when clicking outside
+  document.addEventListener('click', function(event) {
+    const dropdown = document.querySelector('.mobile-nav-dropdown');
+    if (dropdown && !dropdown.contains(event.target)) {
+      closeNavDropdown();
+    }
+  });
 </script>
 {% endblock %}
