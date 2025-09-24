@@ -50,20 +50,34 @@
     overflow-x: hidden;
   }
 
-  /* Navigation - Only override colors and specific styles */
+  /* Navigation - Uses theme variables */
   .navbar {
     background: var(--surface);
-    border-bottom: 1px solid var(--border);
+    color: var(--text-primary);
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     box-shadow: var(--shadow);
+    position: fixed;
+    width: 100%;
+    top: 0;
+    z-index: 1000;
+    transition: all 0.4s ease;
+    border-bottom: 1px solid var(--border);
   }
 
   .navbar .brand {
     color: var(--text-primary);
+    font-weight: 700;
   }
 
   .navbar .nav-link {
     color: var(--text-secondary);
     border-radius: 8px;
+    padding: 8px 12px;
+    text-decoration: none;
+    transition: all 0.3s ease;
   }
 
   .navbar .nav-link:hover {
@@ -88,7 +102,10 @@
     grid-template-columns: 1fr 2fr 3fr;
     height: calc(100vh - 70px);
     gap: 1px;
+    margin-top: 69px;
+
     background: var(--border);
+
   }
 
   /* Left Panel - Control Buttons */
