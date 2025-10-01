@@ -1,9 +1,9 @@
 <<<<<<< HEAD
 Public Crowed Management Bases
 =======
-# 🚌 Bus Tracking System
+# Transportaion and Logistics Tracking System
 
-A comprehensive real-time bus tracking system built with Django and featuring user location detection, nearest bus finding, bus search functionality, and admin management.
+A comprehensive real-time Transposrtaion & Logistics tracking system built with Django and featuring user location detection, nearest bus finding, bus search functionality, and admin management.
 
 ## ✨ Features
 
