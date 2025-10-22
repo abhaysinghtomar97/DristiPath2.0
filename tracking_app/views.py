@@ -1491,25 +1491,17 @@ def check_schedule_conflicts(user, bus, driver, start_time, end_time, days_of_we
         end_time__gt=start_time
     )
     
-    # Check for common days overlap
-    if weekday_numbers:
-        # Use JSON field lookup to check for overlapping days
-        days_overlap_query = Q()
-        for day_num in weekday_numbers:
-            days_overlap_query |= Q(days_of_week__contains=[day_num])
-    else:
-        # If no specific days, assume it conflicts with all schedules
-        days_overlap_query = Q()
-    
-    # Check for bus conflicts
+    # Check for bus conflicts - simplified for SQLite compatibility
     bus_conflicts = Schedule.objects.filter(
         base_query & time_overlap_query & Q(bus=bus)
     )
     
-    if weekday_numbers:
-        bus_conflicts = bus_conflicts.filter(days_overlap_query)
-    
-    if bus_conflicts.exists():
+    # Manual check for day overlap since SQLite doesn't support contains lookup
+    if weekday_numbers and bus_conflicts.exists():
+        for schedule in bus_conflicts:
+            if any(day in schedule.days_of_week for day in weekday_numbers):
+                return f"Bus {bus.bus_id} is already scheduled during this time in schedule '{schedule.name}'"
+    elif bus_conflicts.exists():
         conflicting_schedule = bus_conflicts.first()
         return f"Bus {bus.bus_id} is already scheduled during this time in schedule '{conflicting_schedule.name}'"
     
@@ -1519,12 +1511,15 @@ def check_schedule_conflicts(user, bus, driver, start_time, end_time, days_of_we
             base_query & time_overlap_query & Q(driver=driver)
         )
         
-        if weekday_numbers:
-            driver_conflicts = driver_conflicts.filter(days_overlap_query)
-        
-        if driver_conflicts.exists():
+        # Manual check for day overlap
+        if weekday_numbers and driver_conflicts.exists():
+            for schedule in driver_conflicts:
+                if any(day in schedule.days_of_week for day in weekday_numbers):
+                    return f"Driver {driver.name} is already scheduled during this time in schedule '{schedule.name}'"
+        elif driver_conflicts.exists():
             conflicting_schedule = driver_conflicts.first()
             return f"Driver {driver.name} is already scheduled during this time in schedule '{conflicting_schedule.name}'"
+
     
     # Additional validation: Check for schedule exceptions that might conflict
     # This is a simplified check - you might want to make it more sophisticated
