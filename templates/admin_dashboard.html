@@ -228,8 +228,8 @@
               </div>
               <div>
                 <div class="kpi"><span class="dot" style="background:#22c55e"></span> Bus</div>
-                <div class="kpi"><span class="dot" style="background:#38bdf8"></span> Metro</div>
-                <div class="kpi"><span class="dot" style="background:#f472b6"></span> Tram</div>
+                <div class="kpi"><span class="dot" style="background:#38bdf8"></span> Auto</div>
+                <div class="kpi"><span class="dot" style="background:#f472b6"></span> Truck</div>
                 <div class="kpi"><span class="dot" style="background:#f59e0b"></span> Train</div>
                 <div class="kpi"><span class="dot" style="background:#a3e635"></span> Ferry</div>
                 <div style="margin-top:10px; color:var(--muted); font-size:12px;">Per-admin distribution</div>
@@ -365,8 +365,8 @@
           <label for="vehicle-type">Type</label>
           <select id="vehicle-type" name="vehicle_type">
             <option value="bus">Bus</option>
-            <option value="metro">Metro</option>
-            <option value="tram">Tram</option>
+            <option value="auto">Auto</option>
+            <option value="truck">Truck</option>
             <option value="train">Train</option>
             <option value="ferry">Ferry</option>
           </select>
@@ -531,7 +531,7 @@
 
   function updateVehiclePie(counts){
     if(!counts) return;
-    const labels = ['bus','metro','tram','train','ferry'];
+    const labels = ['bus','auto','truck','train','ferry'];
     const data = labels.map(k => counts[k] || 0);
     const colors = ['#22c55e','#38bdf8','#f472b6','#f59e0b','#a3e635'];
     const ctx = document.getElementById('vehiclePie');

@@ -29,8 +29,8 @@ class Bus(models.Model):
     """Vehicle information (bus/metro/train/etc.)"""
     VEHICLE_TYPES = [
         ("bus", "Bus"),
-        ("metro", "Metro"),
-        ("tram", "Tram"),
+        ("auto", "Auto"),
+        ("truck", "Truck"),
         ("train", "Train"),
         ("ferry", "Ferry"),
     ]
