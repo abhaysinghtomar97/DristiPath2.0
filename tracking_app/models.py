@@ -85,14 +85,20 @@ class Bus(models.Model):
             }
         
         # No exception, check for active schedules
-        active_schedule = self.schedules.filter(
+        current_weekday = current_datetime.weekday()
+        active_schedules = self.schedules.filter(
             is_active=True,
             effective_from__lte=current_datetime.date()
         ).filter(
             models.Q(effective_to__isnull=True) | models.Q(effective_to__gte=current_datetime.date())
-        ).filter(
-            days_of_week__contains=[current_datetime.weekday()]
-        ).order_by('-priority', 'start_time').first()
+        ).order_by('-priority', 'start_time')
+        
+        # Manual check for weekday since SQLite doesn't support contains lookup
+        active_schedule = None
+        for schedule in active_schedules:
+            if current_weekday in schedule.days_of_week:
+                active_schedule = schedule
+                break
         
         if active_schedule and active_schedule.is_active_now(current_datetime):
             return {

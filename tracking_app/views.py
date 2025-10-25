@@ -397,13 +397,17 @@ def admin_list_buses(request):
                 'route_id': bus.route.route_id if bus.route else None,
                 'route_name': bus.route.name if bus.route else None,
                 'driver_name': bus.driver_name,
+                'driver_mobile': bus.driver_mobile,
                 'capacity': bus.capacity,
                 'vehicle_type': bus.vehicle_type,
+                'current_speed': bus.current_speed,
                 'is_active': bus.is_active,
                 'created_at': bus.created_at.isoformat(),
                 'current_location': {
                     'latitude': current_location.latitude,
                     'longitude': current_location.longitude,
+                    'speed': current_location.speed,
+                    'heading': current_location.heading,
                     'last_updated': current_location.last_updated.isoformat()
                 } if current_location else None
             })
@@ -1439,7 +1443,9 @@ def admin_get_current_schedules(request):
         })
         
     except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+        import traceback
+        print("Error in get_current_schedules:", traceback.format_exc())
+        return JsonResponse({"status": "error", "message": str(e)}, status=500)
 
 
 def check_schedule_conflicts(user, bus, driver, start_time, end_time, days_of_week, effective_from, effective_to):
@@ -1491,19 +1497,15 @@ def check_schedule_conflicts(user, bus, driver, start_time, end_time, days_of_we
         end_time__gt=start_time
     )
     
-    # Check for bus conflicts - simplified for SQLite compatibility
+    # Check for bus conflicts - SQLite compatible
     bus_conflicts = Schedule.objects.filter(
         base_query & time_overlap_query & Q(bus=bus)
     )
     
     # Manual check for day overlap since SQLite doesn't support contains lookup
-    if weekday_numbers and bus_conflicts.exists():
-        for schedule in bus_conflicts:
-            if any(day in schedule.days_of_week for day in weekday_numbers):
-                return f"Bus {bus.bus_id} is already scheduled during this time in schedule '{schedule.name}'"
-    elif bus_conflicts.exists():
-        conflicting_schedule = bus_conflicts.first()
-        return f"Bus {bus.bus_id} is already scheduled during this time in schedule '{conflicting_schedule.name}'"
+    for schedule in bus_conflicts:
+        if not weekday_numbers or any(day in schedule.days_of_week for day in weekday_numbers):
+            return f"Bus {bus.bus_id} is already scheduled during this time in schedule '{schedule.name}'"
     
     # Check for driver conflicts (if driver is provided)
     if driver:
@@ -1512,13 +1514,9 @@ def check_schedule_conflicts(user, bus, driver, start_time, end_time, days_of_we
         )
         
         # Manual check for day overlap
-        if weekday_numbers and driver_conflicts.exists():
-            for schedule in driver_conflicts:
-                if any(day in schedule.days_of_week for day in weekday_numbers):
-                    return f"Driver {driver.name} is already scheduled during this time in schedule '{schedule.name}'"
-        elif driver_conflicts.exists():
-            conflicting_schedule = driver_conflicts.first()
-            return f"Driver {driver.name} is already scheduled during this time in schedule '{conflicting_schedule.name}'"
+        for schedule in driver_conflicts:
+            if not weekday_numbers or any(day in schedule.days_of_week for day in weekday_numbers):
+                return f"Driver {driver.name} is already scheduled during this time in schedule '{schedule.name}'"
 
     
     # Additional validation: Check for schedule exceptions that might conflict

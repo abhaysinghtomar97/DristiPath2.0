@@ -272,15 +272,7 @@
 
         <section class="content-grid">
           <div class="panel">
-            <h3>Current Active Schedules</h3>
-            <div style="margin-bottom: 15px; padding: 10px; background: var(--card); border-radius: 8px; border: 1px solid var(--border);">
-              <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; text-align: center;">
-                <div><strong id="active-now-count">0</strong><br><small style="color: var(--muted);">Active Now</small></div>
-                <div><strong id="scheduled-today-count">0</strong><br><small style="color: var(--muted);">Today</small></div>
-                <div><strong id="exceptions-today-count">0</strong><br><small style="color: var(--muted);">Exceptions</small></div>
-                <div><strong id="drivers-on-duty-count">0</strong><br><small style="color: var(--muted);">On Duty</small></div>
-              </div>
-            </div>
+            <h3>Active Schedules Overview</h3>
             <div id="current-schedules-list">
               <div style="text-align:center; padding: 20px; color: var(--muted);">Loading current schedules...</div>
             </div>
@@ -295,13 +287,16 @@
             </div>
             
             <div style="margin-top: 20px;">
-              <h4 style="margin: 0 0 10px 0;">Today's Schedule Overview</h4>
+              <h4 style="margin: 0 0 10px 0;">Live Statistics</h4>
+              <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 15px;">
+                <div style="text-align: center; padding: 10px; background: var(--card); border-radius: 8px; border: 1px solid var(--border);">
+                  <strong id="active-now-count">0</strong><br><small style="color: var(--muted);">Active Now</small>
+                </div>
+                <div style="text-align: center; padding: 10px; background: var(--card); border-radius: 8px; border: 1px solid var(--border);">
+                  <strong id="drivers-on-duty-count">0</strong><br><small style="color: var(--muted);">On Duty</small>
+                </div>
+              </div>
               <div id="today-schedule-overview" style="font-size: 13px; color: var(--muted);">Loading...</div>
-            </div>
-            
-            <div style="margin-top: 20px;">
-              <h4 style="margin: 0 0 10px 0;">Quick Stats</h4>
-              <div id="schedule-quick-stats" style="font-size: 13px; color: var(--muted);">Loading...</div>
             </div>
           </div>
         </section>
@@ -1348,17 +1343,9 @@
     
     // Update quick counters
     document.getElementById('active-now-count').textContent = currentSchedules.length;
-    document.getElementById('scheduled-today-count').textContent = activeSchedules;
-    document.getElementById('exceptions-today-count').textContent = todayExceptions;
     document.getElementById('drivers-on-duty-count').textContent = currentSchedules.filter(s => s.driver || s.driver_static).length;
     
-    // Update detailed stats
-    statsContainer.innerHTML = `
-      <p>• Active right now: ${activeSchedules} schedules</p>
-      <p>• Today's exceptions: ${todayExceptions}</p>
-      <p>• Total drivers: ${drivers.length}</p>
-      <p>• Live assignments: ${currentSchedules.length}</p>
-    `;
+    // Update detailed stats - removed to eliminate redundancy
     
     // Update today's overview
     const currentHour = new Date().getHours();
@@ -1369,10 +1356,10 @@
     });
     
     todayOverviewContainer.innerHTML = `
-      <p>• Current time: ${new Date().toLocaleTimeString()}</p>
-      <p>• Upcoming (3h): ${upcomingSchedules.length} schedules</p>
-      <p>• Active vehicles: ${currentSchedules.length}</p>
-      <p>• Service status: ${todayExceptions > 0 ? `⚠️ ${todayExceptions} disruptions` : '✅ Normal'}</p>
+      <p><strong>Current:</strong> ${new Date().toLocaleTimeString()}</p>
+      <p><strong>Upcoming (3h):</strong> ${upcomingSchedules.length} schedules</p>
+      <p><strong>Today's exceptions:</strong> ${todayExceptions}</p>
+      <p><strong>Service status:</strong> ${todayExceptions > 0 ? `⚠️ ${todayExceptions} disruptions` : '✅ Normal'}</p>
     `;
   }
 
